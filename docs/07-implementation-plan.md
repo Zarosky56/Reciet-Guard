@@ -598,8 +598,8 @@ Deploy the MVP on free tiers.
 
 ### Tasks
 
-1. Push code to GitHub.
-2. Create Vercel Hobby project.
+1. Push code to the existing GitHub repository: `https://github.com/Zarosky56/Reciet-Guard`.
+2. Create or connect a Vercel Hobby project using that exact repository.
 3. Add all env vars in Vercel.
 4. Connect Supabase production project.
 5. Run Supabase SQL migrations.
@@ -615,6 +615,7 @@ Deploy the MVP on free tiers.
 ### Acceptance Criteria
 
 - Production app loads.
+- Vercel is connected to `https://github.com/Zarosky56/Reciet-Guard`.
 - User can sign up in production.
 - User can create and view receipt.
 - AI extraction works in production.

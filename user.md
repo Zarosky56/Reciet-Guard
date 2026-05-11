@@ -481,16 +481,22 @@ https://vercel.com
 
 ### GitHub and Vercel order
 
+Use this exact GitHub repository:
+
+```txt
+https://github.com/Zarosky56/Reciet-Guard
+```
+
 Use this order:
 
-1. Create one GitHub repository for this project.
+1. Use the existing repository above.
 2. Push the project code to that repository.
 3. Import that same repository into Vercel.
 4. Add all `.env.local` values into Vercel Environment Variables.
 5. Deploy the app.
 6. Only after deployment, use the Vercel production URL for services that need a backend URL.
 
-Do not create multiple repositories unless you are starting over.
+Do not create another repository unless you are intentionally starting over.
 
 ### Pub/Sub backend URL
 

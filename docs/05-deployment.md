@@ -33,8 +33,8 @@ Research from DORA (DevOps Research and Assessment) and 2025 SaaS best practices
 
 ```bash
 # 1. Clone repo
-git clone <repo-url>
-cd receipt-guardian
+git clone https://github.com/Zarosky56/Reciet-Guard.git
+cd Reciet-Guard
 
 # 2. Install dependencies
 npm install
@@ -59,8 +59,8 @@ npx supabase start
 
 ### Initial Setup
 
-1. Push code to GitHub
-2. Go to [vercel.com](https://vercel.com), import repo
+1. Push code to GitHub repository: `https://github.com/Zarosky56/Reciet-Guard`
+2. Go to [vercel.com](https://vercel.com), import that exact repo
 3. Set environment variables in Vercel dashboard:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
