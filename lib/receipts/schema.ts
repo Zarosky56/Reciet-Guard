@@ -1,0 +1,52 @@
+import { isValid, parseISO } from "date-fns";
+import { z } from "zod";
+
+const optionalText = (max: number) =>
+  z
+    .union([z.string().trim().max(max), z.null(), z.undefined()])
+    .transform((value) => (value ? value : null));
+
+const optionalDate = z
+  .union([z.string().trim(), z.null(), z.undefined()])
+  .transform((value, ctx) => {
+    if (!value) {
+      return null;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !isValid(parseISO(value))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Use YYYY-MM-DD dates.",
+      });
+      return z.NEVER;
+    }
+
+    return value;
+  });
+
+const optionalMoney = z
+  .union([z.coerce.number().nonnegative(), z.literal(""), z.null(), z.undefined()])
+  .transform((value) => (typeof value === "number" ? value : null));
+
+export const receiptCreateSchema = z.object({
+  store_name: optionalText(255),
+  item_name: optionalText(500),
+  price: optionalMoney,
+  currency: z
+    .string()
+    .trim()
+    .length(3)
+    .default("USD")
+    .transform((value) => value.toUpperCase()),
+  purchase_date: optionalDate,
+  return_deadline: optionalDate,
+  warranty_deadline: optionalDate,
+  raw_email_text: optionalText(10000).optional(),
+  ai_confidence: z.coerce.number().min(0).max(1).nullable().optional(),
+  status: z.enum(["active", "returned", "kept", "expired"]).default("active"),
+});
+
+export const receiptUpdateSchema = receiptCreateSchema.partial();
+
+export type ReceiptCreateInput = z.infer<typeof receiptCreateSchema>;
+export type ReceiptUpdateInput = z.infer<typeof receiptUpdateSchema>;

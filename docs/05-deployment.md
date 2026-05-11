@@ -64,10 +64,18 @@ npx supabase start
 3. Set environment variables in Vercel dashboard:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
    - `GOOGLE_AI_API_KEY`
    - `GROQ_API_KEY`
+   - `GMAIL_CLIENT_ID`
+   - `GMAIL_CLIENT_SECRET`
+   - `GMAIL_REFRESH_TOKEN`
+   - `GMAIL_USER_EMAIL`
    - `RESEND_API_KEY`
+   - `FROM_EMAIL`
    - `WEBHOOK_SECRET`
+   - `CRON_SECRET`
+   - `APP_URL`
 4. Deploy — automatic on every push to `main`
 
 ### Custom Domain (Later)

@@ -492,3 +492,15 @@ node scripts/benchmark-ai.js --all
 - Month 2: 85% field accuracy
 - Month 3: 90% field accuracy
 - Month 6: 93% field accuracy with <5% needs_review rate
+
+## 7. MVP Manual RLS Checklist
+
+Run this before inviting beta users:
+
+1. Sign up as User A and create a receipt.
+2. Sign out, sign up as User B, and confirm User A's receipt is not visible.
+3. As User B, call `GET /api/receipts` and confirm only User B rows appear.
+4. Try `GET /api/receipts/{user-a-receipt-id}` as User B and expect `404`.
+5. Confirm no client bundle contains `SUPABASE_SERVICE_ROLE_KEY`.
+6. Confirm server-only service-role usage is limited to Gmail ingestion and cron
+   notification jobs that explicitly set `user_id`.
