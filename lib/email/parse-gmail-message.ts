@@ -6,6 +6,7 @@ export interface ParsedGmailMessage {
   subject: string | null;
   receivedAt: string;
   bodyText: string;
+  attachmentFilenames: string[];
 }
 
 function decodeBase64Url(data: string) {
@@ -28,9 +29,14 @@ function collectBodyParts(
   part: gmail_v1.Schema$MessagePart | undefined,
   textParts: string[],
   htmlParts: string[],
+  attachmentFilenames: string[],
 ) {
   if (!part) {
     return;
+  }
+
+  if (part.filename) {
+    attachmentFilenames.push(part.filename);
   }
 
   const data = part.body?.data;
@@ -43,7 +49,7 @@ function collectBodyParts(
   }
 
   for (const child of part.parts ?? []) {
-    collectBodyParts(child, textParts, htmlParts);
+    collectBodyParts(child, textParts, htmlParts, attachmentFilenames);
   }
 }
 
@@ -75,8 +81,14 @@ export function parseGmailMessage(
   const headers = message.payload?.headers;
   const textParts: string[] = [];
   const htmlParts: string[] = [];
+  const attachmentFilenames: string[] = [];
 
-  collectBodyParts(message.payload ?? undefined, textParts, htmlParts);
+  collectBodyParts(
+    message.payload ?? undefined,
+    textParts,
+    htmlParts,
+    attachmentFilenames,
+  );
 
   if (message.payload?.body?.data) {
     const decoded = decodeBase64Url(message.payload.body.data);
@@ -97,5 +109,6 @@ export function parseGmailMessage(
       ? new Date(Number(message.internalDate)).toISOString()
       : new Date().toISOString(),
     bodyText: textParts.join("\n\n").trim() || htmlParts.join("\n\n").trim(),
+    attachmentFilenames,
   };
 }

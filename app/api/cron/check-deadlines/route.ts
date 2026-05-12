@@ -6,7 +6,7 @@ import { checkDeadlineNotifications } from "@/lib/notifications/check-deadlines"
 function isAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    return true;
+    return process.env.NODE_ENV !== "production";
   }
 
   return request.headers.get("authorization") === `Bearer ${secret}`;

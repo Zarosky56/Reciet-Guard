@@ -193,6 +193,10 @@ export function ReceiptDashboard({
       }
 
       const successCount = json.summary?.success ?? 0;
+      const needsReviewCount = json.summary?.needs_review ?? 0;
+      const failedCount = json.summary?.failed ?? 0;
+      const unknownSenderCount = json.summary?.unknown_sender ?? 0;
+      const checkedCount = json.checked ?? 0;
       if (successCount > 0) {
         const refresh = await fetch("/api/receipts");
         const refreshed = await refresh.json().catch(() => null);
@@ -201,10 +205,28 @@ export function ReceiptDashboard({
         }
       }
 
+      if (successCount > 0) {
+        toast.success(`Imported ${successCount} receipt${successCount === 1 ? "" : "s"}`);
+        return;
+      }
+
+      if (needsReviewCount > 0) {
+        const firstReviewError = json.results?.find(
+          (result: { status?: string }) => result.status === "needs_review",
+        )?.error;
+        toast.warning(firstReviewError ?? `${needsReviewCount} email${needsReviewCount === 1 ? "" : "s"} need review.`);
+        return;
+      }
+
+      if (failedCount > 0 || unknownSenderCount > 0) {
+        toast.warning("Inbox checked, but no receipt could be imported.");
+        return;
+      }
+
       toast.success(
-        successCount > 0
-          ? `Imported ${successCount} receipt${successCount === 1 ? "" : "s"}`
-          : "Inbox checked. No new receipts imported.",
+        checkedCount > 0
+          ? "Inbox checked. No new receipts imported."
+          : `No recent emails found from ${json.userEmail ?? "your account"}.`,
       );
     });
   }

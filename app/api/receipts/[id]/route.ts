@@ -100,14 +100,20 @@ export async function DELETE(_: Request, context: RouteContext) {
     return apiError("VALIDATION_ERROR", "Invalid receipt id.", 400);
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("receipts")
     .delete()
     .eq("id", parsedId.data)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return apiError("DATABASE_ERROR", "Could not delete receipt.", 500);
+  }
+
+  if (!data) {
+    return apiError("RECEIPT_NOT_FOUND", "Receipt not found.", 404);
   }
 
   return new NextResponse(null, { status: 204 });

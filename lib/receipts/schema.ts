@@ -25,8 +25,12 @@ const optionalDate = z
   });
 
 const optionalMoney = z
-  .union([z.coerce.number().nonnegative(), z.literal(""), z.null(), z.undefined()])
-  .transform((value) => (typeof value === "number" ? value : null));
+  .preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined ? null : value,
+    z.coerce.number().nonnegative().nullable(),
+  )
+  .transform((value) => value ?? null);
 
 export const receiptCreateSchema = z.object({
   store_name: optionalText(255),

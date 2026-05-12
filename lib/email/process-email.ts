@@ -105,6 +105,31 @@ export async function processParsedEmail(
     };
   }
 
+  const hasPdfAttachment = email.attachmentFilenames.some((filename) =>
+    filename.toLowerCase().endsWith(".pdf"),
+  );
+
+  if (hasPdfAttachment && email.bodyText.trim().length < 20) {
+    const error =
+      "PDF receipt attachments are not parsed yet. Forward an email with receipt details in the body, or paste the receipt text manually.";
+
+    await admin.from("email_logs").insert({
+      user_id: userId,
+      gmail_message_id: email.gmailMessageId,
+      from_address: email.fromAddress,
+      subject: email.subject,
+      received_at: email.receivedAt,
+      processing_status: "needs_review",
+      error_message: error,
+    });
+
+    return {
+      messageId: email.gmailMessageId,
+      status: "needs_review",
+      error,
+    };
+  }
+
   try {
     const extraction = await extractReceiptFromEmail(email.bodyText);
 

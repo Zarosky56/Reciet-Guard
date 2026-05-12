@@ -1,8 +1,11 @@
 import { TestExtractionForm } from "@/components/ai/test-extraction-form";
+import { requireUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
-export default function TestExtractionPage() {
+export default async function TestExtractionPage() {
+  await requireUser();
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-4xl px-6 py-8 md:px-8">
       <div className="mb-8">

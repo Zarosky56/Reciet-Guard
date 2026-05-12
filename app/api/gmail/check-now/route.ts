@@ -7,19 +7,26 @@ import { parseGmailMessage } from "@/lib/email/parse-gmail-message";
 import { processParsedEmail } from "@/lib/email/process-email";
 
 export async function POST() {
-  const { response } = await requireApiUser();
+  const { user, response } = await requireApiUser();
   if (response) {
     return response;
+  }
+
+  if (!user?.email) {
+    return apiError("USER_EMAIL_MISSING", "Your account email is missing.", 400);
   }
 
   let gmail: ReturnType<typeof createGmailClient>;
 
   try {
     gmail = createGmailClient();
-  } catch {
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Gmail API credentials are missing.";
+
     return apiError(
       "GMAIL_NOT_CONFIGURED",
-      "Gmail API credentials are missing.",
+      message,
       503,
     );
   }
@@ -27,7 +34,7 @@ export async function POST() {
   try {
     const list = await gmail.users.messages.list({
       userId: "me",
-      q: "is:unread newer_than:7d",
+      q: `from:${user.email} newer_than:7d`,
       maxResults: 25,
     });
 
@@ -60,6 +67,7 @@ export async function POST() {
 
     return NextResponse.json({
       checked: messages.length,
+      userEmail: user.email,
       results,
       summary: {
         success: results.filter((result) => result.status === "success").length,

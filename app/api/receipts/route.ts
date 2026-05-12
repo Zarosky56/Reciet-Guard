@@ -14,14 +14,20 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim();
   const status = searchParams.get("status")?.trim();
-  const limit = Number(searchParams.get("limit") ?? 100);
-  const offset = Number(searchParams.get("offset") ?? 0);
+  const requestedLimit = Number(searchParams.get("limit") ?? 100);
+  const requestedOffset = Number(searchParams.get("offset") ?? 0);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100)
+    : 100;
+  const offset = Number.isFinite(requestedOffset)
+    ? Math.max(Math.trunc(requestedOffset), 0)
+    : 0;
 
   let query = supabase
     .from("receipts")
     .select("*", { count: "exact" })
     .eq("user_id", user.id)
-    .range(offset, offset + Math.min(limit, 100) - 1);
+    .range(offset, offset + limit - 1);
 
   if (status && ["active", "returned", "kept", "expired"].includes(status)) {
     query = query.eq("status", status);
