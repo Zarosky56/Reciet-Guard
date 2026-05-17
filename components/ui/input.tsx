@@ -1,33 +1,44 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 
 import { cn } from "@/lib/utils/cn";
 
-export function Input({
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+const fieldBase = cn(
+  "rounded-lg border border-border bg-bg-elevated text-sm text-text-primary outline-none",
+  "shadow-inner-hair",
+  "transition-[border-color,box-shadow,background-color] duration-200 ease-out",
+  "placeholder:text-text-muted",
+  "hover:border-border-strong",
+  "focus:border-action/70 focus:bg-bg-elevated focus:shadow-[0_0_0_4px_rgba(91,140,255,0.12)]",
+  "focus-visible:outline-none",
+  "disabled:pointer-events-none disabled:opacity-50",
+);
+
+export const Input = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement>
+>(function Input({ className, ...props }, ref) {
   return (
     <input
-      className={cn(
-        "h-10 rounded-lg border border-border bg-bg px-3 text-sm text-text-primary outline-none transition placeholder:text-text-muted focus:border-border-focus",
-        className,
-      )}
+      ref={ref}
+      className={cn(fieldBase, "h-10 px-3", className)}
       {...props}
     />
   );
-}
+});
 
-export function Textarea({
-  className,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export const Textarea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function Textarea({ className, ...props }, ref) {
   return (
     <textarea
-      className={cn(
-        "min-h-32 rounded-lg border border-border bg-bg p-3 text-sm leading-6 text-text-primary outline-none transition placeholder:text-text-muted focus:border-border-focus",
-        className,
-      )}
+      ref={ref}
+      className={cn(fieldBase, "min-h-32 p-3 leading-6", className)}
       {...props}
     />
   );
-}
+});

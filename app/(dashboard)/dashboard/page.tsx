@@ -1,6 +1,7 @@
 import { ensureProfile, requireUser } from "@/lib/auth/session";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { ReceiptDashboard } from "@/components/receipts/receipt-dashboard";
+import { AmbientBackground } from "@/components/visual/ambient-background";
 import { mapReceipts } from "@/lib/receipts/mapper";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,12 +20,15 @@ export default async function DashboardPage() {
   const receipts = mapReceipts(data);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl px-6 md:px-8">
-      <DashboardHeader email={user.email} />
-      <ReceiptDashboard
-        initialReceipts={receipts}
-        forwardingAddress={forwardingAddress}
-      />
-    </main>
+    <>
+      <AmbientBackground variant="app" />
+      <main className="relative mx-auto min-h-screen w-full max-w-6xl px-6 md:px-8">
+        <DashboardHeader email={user.email} />
+        <ReceiptDashboard
+          initialReceipts={receipts}
+          forwardingAddress={forwardingAddress}
+        />
+      </main>
+    </>
   );
 }

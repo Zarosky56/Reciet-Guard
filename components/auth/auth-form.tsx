@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { ArrowRight, ReceiptText } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { FadeIn } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
+import { Input } from "@/components/ui/input";
+import { ActionLoader, ButtonLoader } from "@/components/ui/loaders";
 
 type AuthMode = "login" | "signup";
 
@@ -21,12 +24,15 @@ export function AuthForm({ mode }: AuthFormProps) {
   const next = searchParams.get("next") ?? "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    startTransition(async () => {
+    setIsSubmitting(true);
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const authCall =
         mode === "login"
@@ -49,70 +55,116 @@ export function AuthForm({ mode }: AuthFormProps) {
       toast.success(mode === "login" ? "Welcome back" : "Account created");
       router.push(next);
       router.refresh();
-    });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const isSignup = mode === "signup";
 
   return (
-    <Card className="w-full max-w-md">
-      <CardContent className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-text-primary">
-            {isSignup ? "Create your account" : "Log in"}
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            {isSignup
-              ? "Use the same email you will forward receipts from."
-              : "Open your receipt dashboard."}
-          </p>
-        </div>
-
-        <form onSubmit={onSubmit} className="grid gap-4">
-          <label className="grid gap-2 text-sm font-medium text-text-primary">
-            Email
-            <input
-              required
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="h-11 rounded-lg border border-border bg-bg px-3 text-sm text-text-primary outline-none transition focus:border-border-focus"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-text-primary">
-            Password
-            <input
-              required
-              minLength={6}
-              type="password"
-              autoComplete={isSignup ? "new-password" : "current-password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="h-11 rounded-lg border border-border bg-bg px-3 text-sm text-text-primary outline-none transition focus:border-border-focus"
-            />
-          </label>
-          <Button type="submit" disabled={isPending}>
-            {isPending
-              ? isSignup
-                ? "Creating..."
-                : "Logging in..."
-              : isSignup
-                ? "Sign up"
-                : "Log in"}
-          </Button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-text-secondary">
-          {isSignup ? "Already have an account?" : "New here?"}{" "}
-          <Link
-            href={isSignup ? "/login" : "/signup"}
-            className="text-action transition hover:text-blue-300"
+    <FadeIn className="w-full max-w-md" duration={0.5}>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+          aria-label="Receipt Guardian home"
+        >
+          <span
+            className="border-conic-soft relative flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-action shadow-inner-hair"
+            aria-hidden="true"
           >
-            {isSignup ? "Log in" : "Create an account"}
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+            <ReceiptText className="size-[18px]" />
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight text-text-primary">
+            Receipt Guardian
+          </span>
+        </Link>
+      </div>
+
+      <Card className="backdrop-blur-[1px]">
+        <CardContent className="p-7">
+          <div className="mb-6">
+            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.015em] text-text-primary">
+              {isSignup ? "Create your account" : "Welcome back"}
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              {isSignup
+                ? "Use the same email you plan to forward receipts from."
+                : "Sign in to open your quiet deadline dashboard."}
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="grid gap-4" aria-busy={isSubmitting}>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              Email
+              <Input
+                required
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                className="h-11"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-text-primary">
+              Password
+              <Input
+                required
+                minLength={6}
+                type="password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 6 characters"
+                className="h-11"
+              />
+            </label>
+            <Button
+              type="submit"
+              size="lg"
+              className="mt-2 w-full"
+              disabled={isSubmitting}
+              data-loading={isSubmitting ? "true" : undefined}
+            >
+              {isSubmitting ? (
+                <>
+                  <ButtonLoader variant="auth" />
+                  {isSignup ? "Creating account" : "Signing in securely"}
+                </>
+              ) : (
+                <>
+                  {isSignup ? "Create account" : "Sign in"}
+                  <ArrowRight data-icon aria-hidden="true" />
+                </>
+              )}
+            </Button>
+            {isSubmitting ? (
+              <ActionLoader
+                variant="auth"
+                compact
+                title={isSignup ? "Creating your account" : "Verifying your account"}
+                description={
+                  isSignup
+                    ? "Email, account, dashboard"
+                    : "Account, session, dashboard"
+                }
+              />
+            ) : null}
+          </form>
+        </CardContent>
+      </Card>
+
+      <p className="mt-6 text-center text-sm text-text-secondary">
+        {isSignup ? "Already have an account?" : "New here?"}{" "}
+        <Link
+          href={isSignup ? "/login" : "/signup"}
+          className="rounded-md font-medium text-action transition-colors hover:text-[#8db0ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+        >
+          {isSignup ? "Sign in" : "Create an account"}
+        </Link>
+      </p>
+    </FadeIn>
   );
 }

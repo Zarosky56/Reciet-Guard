@@ -4,18 +4,26 @@
 
 :root {
   color-scheme: dark;
-  --color-bg: #0a0a0f;
+  --color-bg: #08080c;
+  --color-bg-elevated: #0d0d14;
   --color-surface: #14141b;
   --color-surface-hover: #1e1e28;
+  --color-surface-elevated: #1a1a23;
   --color-border: #2a2a3a;
+  --color-border-strong: #353548;
   --color-border-focus: #3b3b50;
-  --color-text-primary: #e8e8ed;
+  --color-text-primary: #ececf1;
   --color-text-secondary: #a0a0b8;
   --color-text-muted: #6b6b80;
   --color-green: #10b981;
   --color-yellow: #f59e0b;
   --color-red: #ef4444;
-  --color-blue: #3b82f6;
+  --color-action: #5b8cff;
+  --color-action-strong: #3b82f6;
+
+  --ease-out-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-premium: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * {
@@ -25,6 +33,9 @@
 html {
   min-height: 100%;
   background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -33,7 +44,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-inter), Inter, system-ui, sans-serif;
-  letter-spacing: 0;
+  letter-spacing: -0.005em;
+  font-feature-settings: "cv11", "ss01", "ss03";
 }
 
 button,
@@ -44,8 +56,154 @@ textarea {
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.32);
-  color: #ffffff;
+  background: rgba(91, 140, 255, 0.32);
+  color: var(--color-text-primary);
+}
+
+/* Premium scrollbar — subtle, Vercel-style */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Utility: ambient gradient text — used sparingly for hero only */
+.text-gradient-primary {
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #ffffff 40%,
+    rgba(236, 236, 241, 0.72) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-gradient-action {
+  background: linear-gradient(135deg, #8db0ff 0%, #5b8cff 45%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Utility: subtle animated conic border for hero mark */
+.border-conic-soft {
+  position: relative;
+}
+
+.border-conic-soft::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(91, 140, 255, 0) 0deg,
+    rgba(91, 140, 255, 0.45) 90deg,
+    rgba(91, 140, 255, 0) 180deg,
+    rgba(91, 140, 255, 0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* Background scene utilities */
+.bg-scene-hero {
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(91, 140, 255, 0.18) 0%,
+      rgba(91, 140, 255, 0) 60%
+    ),
+    radial-gradient(
+      80% 60% at 100% 0%,
+      rgba(120, 80, 255, 0.08) 0%,
+      rgba(120, 80, 255, 0) 60%
+    ),
+    var(--color-bg);
+}
+
+.bg-scene-auth {
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      rgba(91, 140, 255, 0.16) 0%,
+      rgba(91, 140, 255, 0) 60%
+    ),
+    radial-gradient(
+      50% 50% at 50% 100%,
+      rgba(91, 140, 255, 0.08) 0%,
+      rgba(91, 140, 255, 0) 70%
+    ),
+    var(--color-bg);
+}
+
+.bg-grid-faint {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Masked grid for hero — fades out toward edges */
+.mask-fade-radial {
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0.9),
+    transparent 90%
+  );
+  mask-image: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0.9),
+    transparent 90%
+  );
+}
+
+.mask-fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 60%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
+}
+
+/* Premium focus ring — crisper on dark */
+.focus-ring {
+  @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus;
+}
+
+/* Bottom padding for fixed mobile nav bar */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

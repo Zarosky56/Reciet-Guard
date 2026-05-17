@@ -1,17 +1,37 @@
 "use client";
 
-import { Clock, DollarSign, Edit3, Trash2 } from "lucide-react";
+import { CalendarClock, DollarSign, Edit3, Store, Trash2 } from "lucide-react";
 
+import { HoverLift } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CardActionLoader } from "@/components/ui/loaders";
 import { UrgencyBadge } from "@/components/receipts/urgency-badge";
-import type { ReceiptWithUrgency } from "@/types/receipt";
+import { cn } from "@/lib/utils/cn";
+import type { ReceiptStatus, ReceiptWithUrgency } from "@/types/receipt";
 
 interface ReceiptCardProps {
   receipt: ReceiptWithUrgency;
+  isPending?: boolean;
+  pendingAction?: "status" | "delete" | null;
+  pulseUrgency?: boolean;
   onEdit: (receipt: ReceiptWithUrgency) => void;
   onDelete: (receipt: ReceiptWithUrgency) => void;
-  onStatusChange: (receipt: ReceiptWithUrgency, status: string) => void;
+  onStatusChange: (receipt: ReceiptWithUrgency, status: ReceiptStatus) => void;
+}
+
+function safeCurrency(currency: string | null) {
+  const candidate = currency ?? "USD";
+
+  try {
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: candidate,
+    }).format(1);
+    return candidate;
+  } catch {
+    return "USD";
+  }
 }
 
 function formatMoney(price: number | null, currency: string | null) {
@@ -21,7 +41,7 @@ function formatMoney(price: number | null, currency: string | null) {
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency ?? "USD",
+    currency: safeCurrency(currency),
   }).format(price);
 }
 
@@ -37,68 +57,131 @@ function formatDate(date: string | null) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
+const STATUSES = ["active", "returned", "kept", "expired"] as const;
+
 export function ReceiptCard({
   receipt,
+  isPending = false,
+  pendingAction = null,
+  pulseUrgency = false,
   onEdit,
   onDelete,
   onStatusChange,
 }: ReceiptCardProps) {
   return (
-    <Card>
-      <CardContent className="relative p-4">
-        <div className="absolute right-4 top-4">
-          <UrgencyBadge
-            urgency={receipt.urgency}
-            daysRemaining={receipt.days_remaining}
-            status={receipt.status}
-          />
-        </div>
-        <div className="pr-24">
-          <h3 className="line-clamp-2 text-base font-medium text-text-primary">
+    <HoverLift lift={2} className="h-full">
+      <Card data-interactive="true" className="group/card h-full">
+        <CardContent className="relative flex h-full flex-col p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-text-muted">
+              <Store className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {receipt.store_name ?? "Unknown store"}
+              </span>
+            </div>
+            <UrgencyBadge
+              urgency={receipt.urgency}
+              daysRemaining={receipt.days_remaining}
+              status={receipt.status}
+              pulse={pulseUrgency}
+            />
+          </div>
+
+          <h3 className="mt-3 line-clamp-2 text-[15px] font-medium leading-snug text-text-primary">
             {receipt.item_name ?? "Unnamed item"}
           </h3>
-          <p className="mt-1 text-sm text-text-secondary">
-            {receipt.store_name ?? "Unknown store"}
-          </p>
-        </div>
 
-        <div className="mt-5 grid gap-2 text-sm">
-          <div className="flex items-center gap-2 font-mono text-text-primary">
-            <DollarSign className="h-4 w-4 text-action" aria-hidden="true" />
-            {formatMoney(receipt.price, receipt.currency)}
+          <div className="mt-4 flex items-baseline gap-2">
+            <DollarSign
+              className="size-4 text-text-muted"
+              aria-hidden="true"
+            />
+            <span className="font-mono text-lg font-semibold text-text-primary tabular-nums">
+              {formatMoney(receipt.price, receipt.currency)}
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-text-secondary">
-            <Clock className="h-4 w-4 text-text-muted" aria-hidden="true" />
-            Purchased {formatDate(receipt.purchase_date)}
-          </div>
-          <div className="flex items-center gap-2 text-text-secondary">
-            <Clock className="h-4 w-4 text-text-muted" aria-hidden="true" />
-            Return by {formatDate(receipt.return_deadline)}
-          </div>
-        </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(receipt)}>
-            <Edit3 className="h-4 w-4" aria-hidden="true" />
-            Edit
-          </Button>
-          {(["active", "returned", "kept", "expired"] as const).map((status) => (
+          <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border/70 bg-bg-elevated/50 p-3 text-xs">
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider text-text-muted">
+                Purchased
+              </dt>
+              <dd className="mt-1 font-mono text-[12px] text-text-primary tabular-nums">
+                {formatDate(receipt.purchase_date)}
+              </dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-muted">
+                <CalendarClock
+                  className="size-3 shrink-0"
+                  aria-hidden="true"
+                />
+                Return by
+              </dt>
+              <dd className="mt-1 font-mono text-[12px] text-text-primary tabular-nums">
+                {formatDate(receipt.return_deadline)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-5 flex flex-wrap items-center gap-1.5">
+            {STATUSES.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => onStatusChange(receipt, status)}
+                disabled={isPending}
+                aria-pressed={receipt.status === status}
+                className={cn(
+                  "rounded-md border px-2 py-1 text-[11px] font-medium capitalize tracking-wide transition-all duration-150",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus",
+                  "disabled:pointer-events-none disabled:opacity-50",
+                  receipt.status === status
+                    ? "border-action/40 bg-action/10 text-action shadow-inner-hair"
+                    : "border-border bg-bg-elevated text-text-secondary hover:border-border-strong hover:text-text-primary",
+                )}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
+          {pendingAction ? (
+            <CardActionLoader
+              variant={pendingAction === "delete" ? "delete" : "update"}
+              label={
+                pendingAction === "delete"
+                  ? "Removing receipt"
+                  : "Updating status"
+              }
+            />
+          ) : null}
+
+          <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-4">
             <Button
-              key={status}
               type="button"
-              variant={receipt.status === status ? "default" : "ghost"}
+              variant="secondary"
               size="sm"
-              onClick={() => onStatusChange(receipt, status)}
+              onClick={() => onEdit(receipt)}
+              disabled={isPending}
+              className="flex-1"
             >
-              {status}
+              <Edit3 data-icon aria-hidden="true" />
+              Edit
             </Button>
-          ))}
-          <Button type="button" variant="danger" size="sm" onClick={() => onDelete(receipt)}>
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            Delete
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              onClick={() => onDelete(receipt)}
+              disabled={isPending}
+              aria-label="Delete receipt"
+            >
+              <Trash2 data-icon aria-hidden="true" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </HoverLift>
   );
 }

@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPrefixes = ["/dashboard"];
+const protectedPrefixes = ["/dashboard", "/settings", "/profile", "/test-extraction"];
 const authPrefixes = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {

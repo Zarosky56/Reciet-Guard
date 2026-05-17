@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000 --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "sadtest": "vitest run",
     "test:watch": "vitest",
     "gmail:token": "node scripts/generate-gmail-refresh-token.mjs"
   },
@@ -20,6 +20,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "framer-motion": "^11.18.2",
     "googleapis": "^144.0.0",
     "groq-sdk": "^0.15.0",
     "lucide-react": "^0.468.0",
