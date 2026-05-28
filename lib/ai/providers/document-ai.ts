@@ -29,15 +29,12 @@ export interface DocumentAiInput {
   mimeType: string;
 }
 
-let cachedClient: DocumentProcessorServiceClient | null = null;
-
-function getClient(): DocumentProcessorServiceClient {
-  if (!cachedClient) {
-    cachedClient = new DocumentProcessorServiceClient({
-      auth: getGoogleAuth(),
-    });
-  }
-  return cachedClient;
+async function getClient(): Promise<DocumentProcessorServiceClient> {
+  // Don't cache: WIF auth is per-request (each Vercel function invocation
+  // has its own OIDC token in the request header).
+  return new DocumentProcessorServiceClient({
+    auth: await getGoogleAuth(),
+  });
 }
 
 export function isDocumentAiEnabled(): boolean {
@@ -181,7 +178,7 @@ export async function extractWithDocumentAi(
   }
 
   const name = buildProcessorName();
-  const client = getClient();
+  const client = await getClient();
 
   let document;
   try {

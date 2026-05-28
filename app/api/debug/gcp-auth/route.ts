@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
@@ -9,12 +10,6 @@ import {
 /**
  * Diagnostic endpoint for Google Cloud auth.
  * Authenticated via WEBHOOK_SECRET so it can't be hit anonymously.
- *
- *   GET /api/debug/gcp-auth
- *   Authorization: Bearer <WEBHOOK_SECRET>
- *
- * Reports presence of WIF env vars, Vercel OIDC token, and tries to fetch a
- * Google access token. Helpful when WIF setup is failing.
  */
 
 function authorized(request: Request): boolean {
@@ -31,14 +26,18 @@ export async function GET(request: Request) {
     );
   }
 
+  const h = await headers();
+  const headerToken = h.get("x-vercel-oidc-token");
+
   const env = {
     GOOGLE_CLOUD_PROJECT_ID: Boolean(process.env.GOOGLE_CLOUD_PROJECT_ID),
     GCP_WIF_AUDIENCE_set: Boolean(process.env.GCP_WIF_AUDIENCE),
     GCP_WIF_AUDIENCE_value: process.env.GCP_WIF_AUDIENCE ?? null,
     GCP_WIF_SERVICE_ACCOUNT_set: Boolean(process.env.GCP_WIF_SERVICE_ACCOUNT),
     GCP_WIF_SERVICE_ACCOUNT_value: process.env.GCP_WIF_SERVICE_ACCOUNT ?? null,
-    VERCEL_OIDC_TOKEN_present: Boolean(process.env.VERCEL_OIDC_TOKEN),
-    VERCEL_OIDC_TOKEN_length: process.env.VERCEL_OIDC_TOKEN?.length ?? 0,
+    OIDC_via_header_present: Boolean(headerToken),
+    OIDC_via_header_length: headerToken?.length ?? 0,
+    OIDC_via_env_present: Boolean(process.env.VERCEL_OIDC_TOKEN),
     VERCEL_ENV: process.env.VERCEL_ENV ?? null,
     ENABLE_VERTEX_AI: process.env.ENABLE_VERTEX_AI ?? null,
     ENABLE_DOCUMENT_AI: process.env.ENABLE_DOCUMENT_AI ?? null,
@@ -48,11 +47,11 @@ export async function GET(request: Request) {
   const result: Record<string, unknown> = {
     ok: true,
     env,
-    hasVercelWifCredentials: hasVercelWifCredentials(),
+    hasVercelWifCredentials: await hasVercelWifCredentials(),
   };
 
   try {
-    const auth = getGoogleAuth();
+    const auth = await getGoogleAuth();
     const projectId = await getProjectId();
     result.projectIdResolved = projectId;
     const client = await auth.getClient();

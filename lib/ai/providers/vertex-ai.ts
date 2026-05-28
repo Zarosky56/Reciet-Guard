@@ -49,26 +49,22 @@ function looksLikeBillingError(error: unknown): boolean {
 
 let cachedClient: VertexAI | null = null;
 
-function getClient(): VertexAI {
-  if (cachedClient) return cachedClient;
-
+async function getClient(): Promise<VertexAI> {
+  // Don't cache: WIF auth is per-request.
   const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
   const location = process.env.VERTEX_AI_LOCATION ?? "us-central1";
   if (!projectId) {
     throw new VertexAiUnavailableError("GOOGLE_CLOUD_PROJECT_ID not set");
   }
 
+  const auth = await getGoogleAuth();
   cachedClient = new VertexAI({
     project: projectId,
     location,
     googleAuthOptions: {
-      authClient: undefined,
+      authClient: (await auth.getClient()) as never,
     },
   });
-  // The constructor accepts a GoogleAuth instance via googleAuthOptions, but
-  // its TS types are picky; injecting our auth client directly via a wrapper
-  // ensures WIF is honored.
-  Object.assign(cachedClient, { _auth: getGoogleAuth() });
   return cachedClient;
 }
 
@@ -79,7 +75,7 @@ export async function extractWithVertexAi(emailText: string): Promise<string> {
 
   let client: VertexAI;
   try {
-    client = getClient();
+    client = await getClient();
   } catch (error) {
     if (error instanceof VertexAiUnavailableError) throw error;
     throw new VertexAiUnavailableError(

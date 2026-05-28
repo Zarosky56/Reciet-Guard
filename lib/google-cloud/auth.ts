@@ -1,34 +1,46 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { ExternalAccountClient, GoogleAuth } from "google-auth-library";
 
 /**
  * Google Cloud authentication for both local dev and Vercel.
  *
  *  - Local dev: uses `gcloud auth application-default login` (ADC).
- *  - Vercel: uses Workload Identity Federation. Vercel issues an OIDC token
- *    via `VERCEL_OIDC_TOKEN`; we exchange it for a Google access token using
- *    the WIF audience configured in env vars.
+ *  - Vercel runtime: reads the OIDC token from the `x-vercel-oidc-token` request
+ *    header (where Vercel injects it during function invocations) and exchanges
+ *    it for a Google access token via Workload Identity Federation.
+ *  - Vercel build: falls back to `process.env.VERCEL_OIDC_TOKEN`.
  *
- * Required env vars for Vercel WIF (all set in Vercel project settings):
+ * Required env vars for Vercel WIF:
  *   GCP_WIF_AUDIENCE              audience URL of the WIF provider
- *     e.g. //iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/vercel/providers/vercel
  *   GCP_WIF_SERVICE_ACCOUNT       service account email to impersonate
- *     e.g. receipt-guard-app@receipt-guardian-497713.iam.gserviceaccount.com
  *
- * Locally on Windows, only run `gcloud auth application-default login` once.
+ * Required project setting on Vercel:
+ *   Settings → Security → "Secure backend access with OIDC federation" enabled.
  */
 
 const SCOPES = ["https://www.googleapis.com/auth/cloud-platform"];
 
-let cachedAuth: GoogleAuth | null = null;
+async function readVercelOidcToken(): Promise<string | null> {
+  // Header injected at runtime by Vercel functions.
+  try {
+    const h = await headers();
+    const fromHeader = h.get("x-vercel-oidc-token");
+    if (fromHeader) return fromHeader;
+  } catch {
+    // headers() throws outside a request scope (e.g. build time). Ignore.
+  }
 
-function buildWifClient() {
+  // Build-time / local dev fallback (set by `vercel env pull` or in build env).
+  return process.env.VERCEL_OIDC_TOKEN ?? null;
+}
+
+function buildWifClient(oidcToken: string) {
   const audience = process.env.GCP_WIF_AUDIENCE;
   const serviceAccount = process.env.GCP_WIF_SERVICE_ACCOUNT;
-  const oidcToken = process.env.VERCEL_OIDC_TOKEN;
 
-  if (!audience || !serviceAccount || !oidcToken) {
+  if (!audience || !serviceAccount) {
     return null;
   }
 
@@ -45,21 +57,25 @@ function buildWifClient() {
   });
 }
 
-/** Returns a Google auth client suitable for any GCP API. */
-export function getGoogleAuth(): GoogleAuth {
-  if (cachedAuth) return cachedAuth;
+/**
+ * Returns a Google auth client suitable for any GCP API.
+ * NOT cached — each call resolves a fresh OIDC token from the request scope.
+ */
+export async function getGoogleAuth(): Promise<GoogleAuth> {
+  const oidcToken = await readVercelOidcToken();
 
-  const wifClient = buildWifClient();
-  if (wifClient) {
-    cachedAuth = new GoogleAuth({
-      scopes: SCOPES,
-      authClient: wifClient,
-    });
-  } else {
-    cachedAuth = new GoogleAuth({ scopes: SCOPES });
+  if (oidcToken) {
+    const wifClient = buildWifClient(oidcToken);
+    if (wifClient) {
+      return new GoogleAuth({
+        scopes: SCOPES,
+        authClient: wifClient,
+      });
+    }
   }
 
-  return cachedAuth;
+  // Local dev / fallback to ADC.
+  return new GoogleAuth({ scopes: SCOPES });
 }
 
 /** Returns the resolved Google Cloud project ID. */
@@ -67,7 +83,7 @@ export async function getProjectId(): Promise<string> {
   const explicit = process.env.GOOGLE_CLOUD_PROJECT_ID;
   if (explicit) return explicit;
 
-  const auth = getGoogleAuth();
+  const auth = await getGoogleAuth();
   const projectId = await auth.getProjectId();
   if (!projectId) {
     throw new Error("Could not determine GOOGLE_CLOUD_PROJECT_ID");
@@ -75,27 +91,11 @@ export async function getProjectId(): Promise<string> {
   return projectId;
 }
 
-/** True when Vercel WIF is fully configured. */
-export function hasVercelWifCredentials(): boolean {
-  return Boolean(
-    process.env.GCP_WIF_AUDIENCE &&
-      process.env.GCP_WIF_SERVICE_ACCOUNT &&
-      process.env.VERCEL_OIDC_TOKEN,
-  );
-}
-
-/** True when ANY Google Cloud credentials path is available. */
-export function hasGoogleCloudCredentials(): boolean {
-  if (hasVercelWifCredentials()) return true;
-  // Local ADC presence — best-effort check via env var set by gcloud.
-  return Boolean(
-    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-      process.env.CLOUDSDK_CONFIG ||
-      process.env.HOME ||
-      process.env.USERPROFILE,
-  );
-}
-
-export function clearCachedAuth() {
-  cachedAuth = null;
+/** True when WIF is fully configured (env vars set). */
+export async function hasVercelWifCredentials(): Promise<boolean> {
+  if (!process.env.GCP_WIF_AUDIENCE || !process.env.GCP_WIF_SERVICE_ACCOUNT) {
+    return false;
+  }
+  const token = await readVercelOidcToken();
+  return Boolean(token);
 }
