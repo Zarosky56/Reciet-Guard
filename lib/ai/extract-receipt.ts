@@ -59,6 +59,12 @@ interface TextProvider {
 }
 
 const MIN_CONFIDENCE = 0.7;
+/**
+ * Document AI's confidence is an AVERAGE across all extracted entities,
+ * so 0.6 is actually a decent invoice parse. Use a lower threshold here
+ * since its structured output is far more accurate than text-LLM guesses.
+ */
+const MIN_DOCUMENT_AI_CONFIDENCE = 0.5;
 
 const textProviderChain: TextProvider[] = [
   {
@@ -95,7 +101,7 @@ async function tryDocumentAi(
   try {
     const raw = await extractWithDocumentAi(input);
     const data = normalizeExtractionData(raw);
-    if (data.confidence >= MIN_CONFIDENCE) {
+    if (data.confidence >= MIN_DOCUMENT_AI_CONFIDENCE) {
       return data;
     }
     failures.push(`document_ai: low confidence ${data.confidence}`);
