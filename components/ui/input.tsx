@@ -6,15 +6,28 @@ import {
 
 import { cn } from "@/lib/utils/cn";
 
+/**
+ * Field primitives — Input and Textarea share a single base ruleset derived
+ * from the redesigned token system (Phase 2, task 5.9).
+ *
+ * Resting  → bg-canvas, 1px border-border, radius-sm
+ * Hover    → border-border-strong
+ * Focus    → border-border-focus + 1px outline at 1px offset (no shadow halo)
+ * Disabled → opacity-50, no pointer events
+ * Invalid  → border-danger via `aria-invalid="true"` or `data-invalid="true"`
+ *
+ * No 4px shadow halo, no inner-hair shadow, no glow, no gradient fill.
+ * Validates Requirements 8.1, 8.2, 8.5, 11.3.
+ */
 const fieldBase = cn(
-  "rounded-lg border border-border bg-bg-elevated text-sm text-text-primary outline-none",
-  "shadow-inner-hair",
-  "transition-[border-color,box-shadow,background-color] duration-200 ease-out",
+  "rounded-sm border border-border bg-canvas text-sm text-text-primary outline-none",
+  "transition-colors duration-default ease-standard",
   "placeholder:text-text-muted",
   "hover:border-border-strong",
-  "focus:border-action/70 focus:bg-bg-elevated focus:shadow-[0_0_0_4px_rgba(91,140,255,0.12)]",
-  "focus-visible:outline-none",
-  "disabled:pointer-events-none disabled:opacity-50",
+  "focus:border-border-focus focus:outline focus:outline-1 focus:outline-offset-1 focus:outline-border-focus",
+  "focus-visible:border-border-focus focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-border-focus",
+  "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+  "aria-[invalid=true]:border-danger data-[invalid=true]:border-danger",
 );
 
 export const Input = forwardRef<

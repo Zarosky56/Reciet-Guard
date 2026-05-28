@@ -1,24 +1,39 @@
 import { Bell, Inbox, LockKeyhole } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { FadeIn } from "@/components/motion/motion-primitives";
+import { Reveal } from "@/components/motion/motion-primitives";
 import { CopyForwardingAddress } from "@/components/receipts/copy-forwarding-address";
 import { LogoutSection } from "@/components/settings/logout-section";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AmbientBackground } from "@/components/visual/ambient-background";
 import { ensureProfile, requireUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
-const settingsNav = [
-  { href: "#receipt-intake", label: "Receipt intake" },
-  { href: "#notifications", label: "Notifications" },
-  { href: "#account", label: "Account" },
-];
-
+/**
+ * Settings page — Premium UI Redesign (task 8.6).
+ *
+ * Layout (design-system/settings.md, design.md "Spacing, Layout, Radius"):
+ *   - `<main>` constrained by `max-w-content` (56rem, design
+ *     "Container width tokens"). Single column of stacked sections —
+ *     no multi-column grid inside settings (Requirement 4.5).
+ *   - The redesigned `<DashboardHeader>` renders inline at the top of
+ *     `<main>`; its sticky chrome is shared with the dashboard and
+ *     profile routes (Requirement 9.6).
+ *
+ * Vertical rhythm (design.md "Vertical rhythm"):
+ *   - Section gap (page-level)        : `gap-8`  (32px)
+ *   - Card-internal gap (within Card) : `gap-4`  (16px)
+ *   - Label-to-input gap              : `gap-2`  (8px)
+ *
+ * The redesigned chrome (`<DashboardHeader>` + `<MobileBottomNav>`
+ * rendered inside the header) is shared with the dashboard and profile
+ * routes. No `AmbientBackground` is rendered on app screens; the
+ * "hero" tonal band is reserved for the landing route.
+ *
+ * Implements: Requirements 4.5, 4.6, 9.6.
+ */
 export default async function SettingsPage() {
   const user = await requireUser();
   const profile = await ensureProfile(user.id);
@@ -26,120 +41,90 @@ export default async function SettingsPage() {
     profile?.forwarding_address ?? process.env.GMAIL_USER_EMAIL ?? "Not configured";
 
   return (
-    <>
-      <AmbientBackground variant="app" />
-      <main className="relative mx-auto min-h-screen w-full max-w-6xl px-6 md:px-8">
-        <DashboardHeader email={user.email} current="settings" />
+    <main className="mx-auto min-h-screen w-full max-w-content px-4 sm:px-6 md:px-8">
+      <DashboardHeader email={user.email} current="settings" />
 
-        <div className="mx-auto grid w-full max-w-4xl gap-8 py-8 md:py-10">
-          <FadeIn>
-            <header>
-              <p className="text-xs uppercase tracking-wider text-text-muted">
-                Settings
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.015em] text-text-primary md:text-4xl">
-                Keep things predictable
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary md:text-[15px]">
-                Only controls that work today appear here. Account access and
-                receipt intake stay intentionally sparse.
-              </p>
-            </header>
-          </FadeIn>
+      <div className="grid w-full gap-8 py-8 md:py-10">
+        <Reveal>
+          <header className="grid gap-2">
+            <p className="text-xs uppercase tracking-wider text-text-muted">
+              Settings
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-text-primary md:text-3xl">
+              Keep things predictable
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-text-secondary">
+              Only controls that work today appear here. Account access and
+              receipt intake stay intentionally sparse.
+            </p>
+          </header>
+        </Reveal>
 
-          <div className="grid gap-8 md:grid-cols-[12rem_1fr]">
-            <FadeIn delay={0.06}>
-              <nav
-                aria-label="Settings sections"
-                className="flex flex-wrap items-start gap-1 rounded-xl border border-border bg-surface/60 p-1 shadow-inner-hair md:sticky md:top-24 md:flex-col md:items-stretch"
+        <Reveal delay={0.06}>
+          <Card id="receipt-intake">
+            <CardContent className="grid gap-4">
+              <SectionHeading
+                icon={Inbox}
+                title="Receipt intake"
+                description="Forward order emails from your signed-in address, then import them from the dashboard."
+              />
+
+              <SettingRow
+                label="Forwarding address"
+                description="Use this shared inbox for forwarded receipts."
               >
-                {settingsNav.map((item) => (
-                  <Button
-                    key={item.href}
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start"
-                  >
-                    <a href={item.href}>{item.label}</a>
-                  </Button>
-                ))}
-              </nav>
-            </FadeIn>
+                <CopyForwardingAddress address={forwardingAddress} />
+              </SettingRow>
 
-            <div className="grid gap-6">
-              <FadeIn delay={0.1}>
-                <Card id="receipt-intake">
-                  <CardContent className="grid gap-5 p-6">
-                    <SectionHeading
-                      icon={Inbox}
-                      title="Receipt intake"
-                      description="Forward order emails from your signed-in address, then import them from the dashboard."
-                    />
+              <SettingRow
+                label="Inbox import"
+                description="Receipt Guardian imports mail only when you ask it to check."
+              >
+                <Badge>Manual</Badge>
+              </SettingRow>
+            </CardContent>
+          </Card>
+        </Reveal>
 
-                    <SettingRow
-                      label="Forwarding address"
-                      description="Use this shared inbox for forwarded receipts."
-                    >
-                      <CopyForwardingAddress address={forwardingAddress} />
-                    </SettingRow>
+        <Reveal delay={0.12}>
+          <Card id="notifications">
+            <CardContent className="grid gap-4">
+              <SectionHeading
+                icon={Bell}
+                title="Notifications"
+                description="Deadline reminders stay sparse by design, so alerts remain useful."
+              />
 
-                    <SettingRow
-                      label="Inbox import"
-                      description="Receipt Guardian imports mail only when you ask it to check."
-                    >
-                      <Badge className="border-border bg-bg-elevated text-text-secondary">
-                        Manual
-                      </Badge>
-                    </SettingRow>
-                  </CardContent>
-                </Card>
-              </FadeIn>
+              <SettingRow
+                label="Return deadline reminder"
+                description="A daily check sends one email when an active return window is within 3 days."
+              >
+                <Badge variant="success">Active</Badge>
+              </SettingRow>
+            </CardContent>
+          </Card>
+        </Reveal>
 
-              <FadeIn delay={0.16}>
-                <Card id="notifications">
-                  <CardContent className="grid gap-5 p-6">
-                    <SectionHeading
-                      icon={Bell}
-                      title="Notifications"
-                      description="Deadline reminders stay sparse by design, so alerts remain useful."
-                    />
+        <Reveal delay={0.18}>
+          <Card id="account">
+            <CardContent className="grid gap-4">
+              <SectionHeading
+                icon={LockKeyhole}
+                title="Account"
+                description="Your login email is managed by the authentication system."
+              />
 
-                    <SettingRow
-                      label="Return deadline reminder"
-                      description="A daily check sends one email when an active return window is within 3 days."
-                    >
-                      <Badge className="border-emerald-500/30 bg-emerald-500/10 text-success">
-                        Active
-                      </Badge>
-                    </SettingRow>
-                  </CardContent>
-                </Card>
-              </FadeIn>
+              <label className="grid gap-2 text-sm font-medium text-text-primary">
+                Email
+                <Input value={user.email ?? ""} readOnly aria-readonly />
+              </label>
 
-              <FadeIn delay={0.22}>
-                <Card id="account">
-                  <CardContent className="grid gap-5 p-6">
-                    <SectionHeading
-                      icon={LockKeyhole}
-                      title="Account"
-                      description="Your login email is managed by the authentication system."
-                    />
-
-                    <label className="grid gap-2 text-sm font-medium text-text-primary">
-                      Email
-                      <Input value={user.email ?? ""} readOnly aria-readonly />
-                    </label>
-
-                    <LogoutSection />
-                  </CardContent>
-                </Card>
-              </FadeIn>
-            </div>
-          </div>
-        </div>
-      </main>
-    </>
+              <LogoutSection />
+            </CardContent>
+          </Card>
+        </Reveal>
+      </div>
+    </main>
   );
 }
 
@@ -153,18 +138,12 @@ function SectionHeading({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-action shadow-inner-hair">
-        <Icon className="size-[18px]" aria-hidden="true" />
-      </span>
-      <div>
-        <h2 className="text-[17px] font-semibold tracking-tight text-text-primary">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-text-secondary">
-          {description}
-        </p>
-      </div>
+    <div className="grid gap-1">
+      <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-text-primary">
+        <Icon className="size-5 text-accent" aria-hidden="true" />
+        {title}
+      </h2>
+      <p className="text-sm leading-6 text-text-secondary">{description}</p>
     </div>
   );
 }
@@ -179,7 +158,7 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-3 border-t border-border/70 pt-5 md:grid-cols-[1fr_22rem] md:items-center">
+    <div className="grid gap-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div>
         <h3 className="text-sm font-medium text-text-primary">{label}</h3>
         <p className="mt-1 text-sm leading-6 text-text-secondary">

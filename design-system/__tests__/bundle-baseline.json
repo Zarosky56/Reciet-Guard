@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-05-28T05:47:35.050Z",
+  "nextVersion": "^15.3.0",
+  "dashboardFirstLoadJsBytes": 174858,
+  "dashboardFirstLoadJsBytesRaw": 576348,
+  "totalCssBytes": 8431,
+  "totalCssBytesRaw": 38480,
+  "notes": "Captured before the premium-ui-redesign begins. dashboardFirstLoadJsBytes and totalCssBytes are gzip-compressed sizes (level 9). Consumed by scripts/check-bundle-size.mjs in task 13.1.",
+  "detail": {
+    "dashboard": {
+      "manifestKey": "/(dashboard)/dashboard/page",
+      "chunks": [
+        {
+          "chunk": "static/chunks/webpack-89879c4d74da5de1.js",
+          "rawBytes": 3571,
+          "gzippedBytes": 1837
+        },
+        {
+          "chunk": "static/chunks/4bd1b696-c023c6e3521b1417.js",
+          "rawBytes": 173019,
+          "gzippedBytes": 54241
+        },
+        {
+          "chunk": "static/chunks/255-4f84124391a7dac4.js",
+          "rawBytes": 173381,
+          "gzippedBytes": 46223
+        },
+        {
+          "chunk": "static/chunks/main-app-39d12cfa0d73c895.js",
+          "rawBytes": 557,
+          "gzippedBytes": 226
+        },
+        {
+          "chunk": "static/chunks/575-149b0370e8827b3b.js",
+          "rawBytes": 110104,
+          "gzippedBytes": 35787
+        },
+        {
+          "chunk": "static/chunks/909-aed3aa549e59d0fb.js",
+          "rawBytes": 20147,
+          "gzippedBytes": 6764
+        },
+        {
+          "chunk": "static/chunks/720-8f1135c38ec51835.js",
+          "rawBytes": 33165,
+          "gzippedBytes": 9266
+        },
+        {
+          "chunk": "static/chunks/619-ba102abea3e3d0e4.js",
+          "rawBytes": 8537,
+          "gzippedBytes": 3385
+        },
+        {
+          "chunk": "static/chunks/436-858eaf93d2865782.js",
+          "rawBytes": 10365,
+          "gzippedBytes": 4209
+        },
+        {
+          "chunk": "static/chunks/297-6b9a1e615fd7ba51.js",
+          "rawBytes": 12333,
+          "gzippedBytes": 3895
+        },
+        {
+          "chunk": "static/chunks/app/(dashboard)/dashboard/page-7a8042b6d79b964b.js",
+          "rawBytes": 31169,
+          "gzippedBytes": 9025
+        }
+      ],
+      "rawBytes": 576348,
+      "gzippedBytes": 174858
+    },
+    "css": {
+      "files": [
+        {
+          "file": "static/css/44a103969420cf52.css",
+          "rawBytes": 38480,
+          "gzippedBytes": 8431
+        }
+      ],
+      "rawBytes": 38480,
+      "gzippedBytes": 8431
+    }
+  }
+}

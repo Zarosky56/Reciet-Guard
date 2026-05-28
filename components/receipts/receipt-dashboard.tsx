@@ -6,31 +6,29 @@ import {
   Inbox,
   MailSearch,
   Plus,
-  ReceiptText,
   Search,
   Sparkles,
-  Wallet,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 
-import {
-  FadeIn,
-  Stagger,
-  StaggerItem,
-  premiumEase,
-} from "@/components/motion/motion-primitives";
 import { CopyForwardingAddress } from "@/components/receipts/copy-forwarding-address";
 import { ReceiptCard } from "@/components/receipts/receipt-card";
 import { ReceiptEmptyState } from "@/components/receipts/receipt-empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/input";
-import { ActionLoader, ButtonLoader } from "@/components/ui/loaders";
+import { ActionLoader, Loader } from "@/components/ui/loaders";
 import { cn } from "@/lib/utils/cn";
 import type { ReceiptStatus, ReceiptWithUrgency } from "@/types/receipt";
+
+// Local easing tuple matching `--ease-standard` in `app/globals.css`.
+// Inlined here after the deprecated `premiumEase` re-export was removed
+// from `components/motion/motion-primitives.tsx` in task 11.3.
+const standardEase = [0.2, 0, 0, 1] as const;
 
 type ReceiptFormState = {
   store_name: string;
@@ -175,12 +173,25 @@ export function ReceiptDashboard({
           receipt.days_remaining <= 3
         );
       if (filter === "expired")
+        // Two senses of "expired" coexist:
+        //   1. Manual status: the user marked the receipt as expired
+        //      via the receipt-card status toggle.
+        //   2. Urgency-driven: the receipt is still `active` but its
+        //      return deadline has passed (`days_remaining < 0`).
+        // The Expired filter chip surfaces both so the user sees every
+        // receipt they would think of as expired.
         return (
-          receipt.status === "active" &&
-          receipt.days_remaining !== null &&
-          receipt.days_remaining < 0
+          receipt.status === "expired" ||
+          (receipt.status === "active" &&
+            receipt.days_remaining !== null &&
+            receipt.days_remaining < 0)
         );
-      if (filter === "closed") return receipt.status !== "active";
+      if (filter === "closed")
+        // "Closed" = manually settled receipts the user no longer needs
+        // to act on (returned or kept). Manual-status `expired` is
+        // surfaced under the Expired chip above, not here, so it never
+        // double-counts.
+        return receipt.status === "returned" || receipt.status === "kept";
       return true;
     });
 
@@ -213,18 +224,6 @@ export function ReceiptDashboard({
       moneyAtRisk,
     };
   }, [receipts]);
-
-  const firstPulsedReceiptId = useMemo(() => {
-    return (
-      filteredReceipts.find(
-        (receipt) =>
-          receipt.status === "active" &&
-          receipt.urgency === "red" &&
-          receipt.days_remaining !== null &&
-          receipt.days_remaining >= 0,
-      )?.id ?? null
-    );
-  }, [filteredReceipts]);
 
   function resetForm() {
     setEditingId(null);
@@ -407,115 +406,106 @@ export function ReceiptDashboard({
     maximumFractionDigits: 0,
   }).format(stats.moneyAtRisk);
 
+  const [extractOpen, setExtractOpen] = useState(false);
+
   return (
-    <div className="grid gap-8 py-8 md:py-10">
-      {/* Hero block: money at risk + intake */}
-      <FadeIn duration={0.5}>
-        <Card className="relative overflow-hidden">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 -top-24 h-64 bg-aurora-action opacity-80"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-grid-faint mask-fade-bottom opacity-40"
-          />
-          <CardContent className="relative grid gap-6 p-6 md:p-8 lg:grid-cols-[1.25fr_1fr]">
-            <div className="flex flex-col">
-              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-text-secondary shadow-inner-hair">
-                <Wallet className="size-3" aria-hidden="true" />
-                Money at risk
-              </span>
-              <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                <span className="font-mono text-[40px] font-semibold leading-none tracking-[-0.025em] text-text-primary tabular-nums sm:text-5xl md:text-6xl">
+    <div className="grid gap-6 pb-24 pt-6 md:gap-8 md:pb-10 md:pt-8">
+      {/* Hero block: title, money-at-risk summary, intake address, actions */}
+      <Card>
+        <CardContent className="grid gap-5 p-5 md:p-7">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
+                Your return dashboard
+              </h1>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                <span className="font-mono text-3xl font-semibold leading-none tracking-tight text-text-primary tabular-nums sm:text-4xl">
                   {moneyAtRiskDisplay}
                 </span>
                 {stats.expiringSoon > 0 ? (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-warning">
-                    <AlertTriangle
-                      className="size-3"
-                      aria-hidden="true"
-                    />
+                  <Badge variant="warning">
+                    <AlertTriangle className="size-3" aria-hidden="true" />
                     {stats.expiringSoon} due soon
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-success">
-                    <CheckCircle2
-                      className="size-3"
-                      aria-hidden="true"
-                    />
+                  <Badge variant="success">
+                    <CheckCircle2 className="size-3" aria-hidden="true" />
                     All calm
-                  </span>
+                  </Badge>
                 )}
               </div>
-              <p className="mt-3 max-w-md text-sm leading-6 text-text-secondary">
-                Active receipts across {stats.total} tracked items. Forward or
-                paste any order email to add more.
+              <p className="text-sm text-text-secondary">
+                {stats.active} active · {stats.total} total
               </p>
+            </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  onClick={checkGmailNow}
-                  disabled={isBusy}
-                  data-loading={isInboxPending ? "true" : undefined}
-                >
-                  {isInboxPending ? (
-                    <ButtonLoader variant="inbox" />
-                  ) : (
-                    <Inbox data-icon aria-hidden="true" />
-                  )}
-                  {isInboxPending ? "Scanning inbox" : "Check inbox now"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => openEditor()}
-                  disabled={isBusy}
-                >
-                  <Plus data-icon aria-hidden="true" />
-                  Add receipt
-                </Button>
-              </div>
-              {isInboxPending ? (
-                <ActionLoader
-                  variant="inbox"
-                  compact
-                  className="mt-4 max-w-md"
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                onClick={checkGmailNow}
+                disabled={isBusy}
+                data-loading={isInboxPending ? "true" : undefined}
+              >
+                {isInboxPending ? (
+                  <Loader size="sm" label="" />
+                ) : (
+                  <Inbox data-icon aria-hidden="true" />
+                )}
+                {isInboxPending ? "Scanning" : "Check inbox"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openEditor()}
+                disabled={isBusy}
+              >
+                <Plus data-icon aria-hidden="true" />
+                Add
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setExtractOpen(!extractOpen)}
+                disabled={isBusy}
+                aria-expanded={extractOpen}
+                aria-controls="ai-extract-panel"
+              >
+                <Sparkles data-icon aria-hidden="true" />
+                <span className="hidden sm:inline">Paste email</span>
+                <span className="sm:hidden">AI</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <CopyForwardingAddress address={forwardingAddress} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Extraction block — collapsible */}
+      {extractOpen ? (
+        <Card id="ai-extract-panel">
+          <CardContent className="grid gap-4 p-5 md:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles
+                  className="size-4 text-accent"
+                  aria-hidden="true"
                 />
-              ) : null}
-            </div>
-
-            <div className="flex flex-col justify-center">
-              <CopyForwardingAddress address={forwardingAddress} />
-
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <StatMini label="Total" value={String(stats.total)} />
-                <StatMini label="Active" value={String(stats.active)} />
-                <StatMini label="Due soon" value={String(stats.expiringSoon)} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </FadeIn>
-
-      {/* AI Extraction block */}
-      <FadeIn delay={0.08} duration={0.5}>
-        <Card>
-          <CardContent className="grid gap-5 p-6 md:p-7">
-            <div className="flex items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-action shadow-inner-hair">
-                <Sparkles className="size-[18px]" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-[15px] font-semibold tracking-tight text-text-primary">
+                <h2 className="text-base font-semibold tracking-tight text-text-primary">
                   Paste an order email
                 </h2>
-                <p className="mt-1 text-sm leading-6 text-text-secondary">
-                  AI extracts fields into the editor for your review before
-                  saving.
-                </p>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setExtractOpen(false)}
+                aria-label="Close extraction panel"
+              >
+                <X data-icon aria-hidden="true" />
+              </Button>
             </div>
 
             <label className="grid gap-2 text-sm font-medium text-text-primary">
@@ -523,14 +513,16 @@ export function ReceiptDashboard({
               <Textarea
                 value={emailText}
                 onChange={(event) => setEmailText(event.target.value)}
-                placeholder="Paste an anonymized order email..."
-                className="min-h-36"
+                placeholder="Paste order confirmation email here..."
+                className="min-h-32"
               />
             </label>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-text-muted">
-                Your email is processed only for this extraction.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              {isExtractPending ? (
+                <Loader label="Reading receipt text" />
+              ) : (
+                <span aria-hidden="true" />
+              )}
               <Button
                 type="button"
                 onClick={extractEmail}
@@ -538,158 +530,132 @@ export function ReceiptDashboard({
                 data-loading={isExtractPending ? "true" : undefined}
               >
                 {isExtractPending ? (
-                  <ButtonLoader variant="extract" />
+                  <Loader size="sm" label="" />
                 ) : (
                   <MailSearch data-icon aria-hidden="true" />
                 )}
-                {isExtractPending ? "Extracting fields" : "Extract fields"}
+                {isExtractPending ? "Extracting" : "Extract"}
               </Button>
             </div>
-            {isExtractPending ? <ActionLoader variant="extract" compact /> : null}
           </CardContent>
         </Card>
-      </FadeIn>
+      ) : null}
 
       {/* Receipts list */}
-      <FadeIn delay={0.14} duration={0.5}>
-        <section className="grid gap-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-surface text-action shadow-inner-hair">
-                <ReceiptText className="size-[18px]" aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-text-primary">
-                  Receipts
-                </h2>
-                <p className="text-xs text-text-muted">
-                  {filteredReceipts.length} shown · {stats.total} total
-                </p>
+      <section className="grid gap-4">
+        {/* Search row */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="relative w-full sm:max-w-sm">
+            <span className="sr-only">Search receipts</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted"
+              aria-hidden="true"
+            />
+            <Input
+              ref={searchRef}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search receipts"
+              className="pl-9 pr-12"
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center sm:flex"
+            >
+              <kbd className="rounded-xs border border-border bg-canvas px-2 py-0.5 font-mono text-xs leading-none text-text-muted">
+                /
+              </kbd>
+            </span>
+          </label>
+
+          <p className="text-xs text-text-muted sm:hidden">
+            {filteredReceipts.length} shown
+          </p>
+        </div>
+
+        {/* Segmented filter chips */}
+        <div
+          role="group"
+          aria-label="Filter receipts"
+          className="-mx-1 flex flex-wrap items-center gap-2 px-1"
+        >
+          {FILTERS.map((f) => {
+            const isActive = filter === f.key;
+            return (
+              <Button
+                key={f.key}
+                type="button"
+                variant="ghost"
+                size="sm"
+                data-active={isActive ? "true" : undefined}
+                aria-pressed={isActive}
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  isActive && "bg-accent-tint text-text-primary",
+                )}
+              >
+                {f.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {filteredReceipts.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredReceipts.map((receipt) => (
+              <div key={receipt.id}>
+                <ReceiptCard
+                  receipt={receipt}
+                  isPending={isBusy}
+                  pendingAction={
+                    pendingAction?.type === "status" &&
+                    pendingAction.receiptId === receipt.id
+                      ? "status"
+                      : pendingAction?.type === "delete" &&
+                          pendingAction.receiptId === receipt.id
+                        ? "delete"
+                        : null
+                  }
+                  onEdit={(item) =>
+                    openEditor(toForm(item), item.id)
+                  }
+                  onDelete={deleteReceipt}
+                  onStatusChange={updateReceiptStatus}
+                />
               </div>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <label className="relative w-full sm:w-72">
-                <span className="sr-only">Search receipts</span>
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted"
-                  aria-hidden="true"
-                />
-                <Input
-                  ref={searchRef}
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search store or item..."
-                  className="pl-9 pr-14"
-                />
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-1 sm:flex"
-                >
-                  <kbd className="rounded-md border border-border bg-bg px-1.5 py-0.5 font-mono text-[10px] leading-none text-text-muted">
-                    /
-                  </kbd>
-                </span>
-              </label>
-            </div>
+            ))}
           </div>
-
-          {/* Segmented filters */}
-          <div className="-mx-1 overflow-x-auto">
-            <div className="flex min-w-max items-center gap-1 rounded-xl border border-border bg-surface/60 p-1 shadow-inner-hair">
-              {FILTERS.map((f) => {
-                const isActive = filter === f.key;
-                return (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => setFilter(f.key)}
-                    aria-pressed={isActive}
-                    className={cn(
-                      "relative inline-flex h-8 items-center rounded-lg px-3 text-[12.5px] font-medium transition-colors duration-200",
-                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus",
-                      isActive
-                        ? "text-text-primary"
-                        : "text-text-secondary hover:text-text-primary",
-                    )}
-                  >
-                    {isActive ? (
-                      <motion.span
-                        layoutId="filter-active"
-                        transition={{
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 34,
-                          mass: 0.6,
-                        }}
-                        className="absolute inset-0 -z-10 rounded-lg bg-bg-elevated shadow-inner-hair"
-                      />
-                    ) : null}
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {filteredReceipts.length > 0 ? (
-            <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredReceipts.map((receipt) => (
-                <StaggerItem key={receipt.id}>
-                  <ReceiptCard
-                    receipt={receipt}
-                    isPending={isBusy}
-                    pendingAction={
-                      pendingAction?.type === "status" &&
-                      pendingAction.receiptId === receipt.id
-                        ? "status"
-                        : pendingAction?.type === "delete" &&
-                            pendingAction.receiptId === receipt.id
-                          ? "delete"
-                          : null
-                    }
-                    pulseUrgency={receipt.id === firstPulsedReceiptId}
-                    onEdit={(item) =>
-                      openEditor(toForm(item), item.id)
-                    }
-                    onDelete={deleteReceipt}
-                    onStatusChange={updateReceiptStatus}
-                  />
-                </StaggerItem>
-              ))}
-            </Stagger>
-          ) : receipts.length === 0 ? (
-            <ReceiptEmptyState forwardingAddress={forwardingAddress} />
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center py-12 text-center">
-                <Search
-                  className="size-6 text-text-muted"
-                  aria-hidden="true"
-                />
-                <p className="mt-4 text-sm font-medium text-text-primary">
-                  No matching receipts
-                </p>
-                <p className="mt-1 max-w-sm text-xs text-text-secondary">
-                  Try clearing the search or changing the filter.
-                </p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => {
-                    setSearch("");
-                    setFilter("all");
-                  }}
-                >
-                  Reset filters
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-      </FadeIn>
+        ) : receipts.length === 0 ? (
+          <ReceiptEmptyState forwardingAddress={forwardingAddress} />
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center py-12 text-center">
+              <Search
+                className="size-6 text-text-muted"
+                aria-hidden="true"
+              />
+              <p className="mt-4 text-sm font-medium text-text-primary">
+                No matching receipts
+              </p>
+              <p className="mt-1 max-w-sm text-xs text-text-secondary">
+                Try clearing the search or changing the filter.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("all");
+                }}
+              >
+                Reset filters
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
       {/* Editor drawer / sheet */}
       <ReceiptEditorSheet
@@ -706,18 +672,6 @@ export function ReceiptDashboard({
   );
 }
 
-function StatMini({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-bg-elevated/60 p-3 shadow-inner-hair">
-      <p className="text-[10px] uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      <p className="mt-1.5 font-mono text-lg font-semibold text-text-primary tabular-nums">
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function ReceiptEditorSheet({
   open,
@@ -773,8 +727,8 @@ function ReceiptEditorSheet({
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: 0.28, ease: premiumEase }}
-            className="relative w-full max-w-2xl overflow-hidden rounded-t-card-lg border border-border bg-surface shadow-card-lift sm:rounded-card-lg"
+            transition={{ duration: 0.28, ease: standardEase }}
+            className="relative w-full max-w-2xl overflow-hidden rounded-t-card-lg border border-border bg-surface sm:rounded-card-lg"
             onMouseDown={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -782,7 +736,7 @@ function ReceiptEditorSheet({
           >
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface/95 px-5 py-4 backdrop-blur">
               <div className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-bg-elevated text-action shadow-inner-hair">
+                <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-bg-elevated text-action">
                   <Plus className="size-[16px]" aria-hidden="true" />
                 </span>
                 <div>
@@ -894,7 +848,7 @@ function ReceiptEditorSheet({
                     onChange={(event) =>
                       setField("status", event.target.value as ReceiptStatus)
                     }
-                    className="h-10 rounded-lg border border-border bg-bg-elevated px-3 text-sm text-text-primary shadow-inner-hair outline-none transition focus:border-action/70 focus:shadow-[0_0_0_4px_rgba(91,140,255,0.12)] focus-visible:outline-none"
+                    className="h-10 rounded-lg border border-border bg-bg-elevated px-3 text-sm text-text-primary outline-none transition focus:border-action/70 focus:shadow-[0_0_0_4px_rgba(91,140,255,0.12)] focus-visible:outline-none"
                   >
                     <option value="active">active</option>
                     <option value="returned">returned</option>
@@ -914,7 +868,7 @@ function ReceiptEditorSheet({
                   data-loading={pendingVariant ? "true" : undefined}
                 >
                   {pendingVariant ? (
-                    <ButtonLoader variant={pendingVariant} />
+                    <Loader size="sm" label="" />
                   ) : null}
                   {pendingVariant
                     ? editing

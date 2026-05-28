@@ -1,613 +1,415 @@
-# IMPLEMENTATION.md — AI Frontend Operating Manual
+# IMPLEMENTATION.md — Frontend Operating Manual
 
-> **Role:** This document governs how AI agents (and human developers) execute UI/UX implementation across Receipt Guardian. It defines workflows, quality gates, tool usage, and anti-drift rules. Every implementation decision must be traceable to a rule in this file.
+> **Role:** This document governs how AI agents (and human developers) execute UI/UX implementation across Receipt Guardian. It defines the four-phase migration model, the workflow lifecycle, the lint-and-test guardrails, and the anti-drift rules introduced by the premium-ui-redesign spec. Every implementation decision must be traceable to a rule in this file or in `DESIGN.md` / `VISUAL_IDENTITY.md`.
 
-> **Authority chain:** `IMPLEMENTATION.md` → `DESIGN.md` → Page specs → Component source
+> **Authority chain:** `IMPLEMENTATION.md` → `DESIGN.md` / `VISUAL_IDENTITY.md` → page specs → component source.
 
 ---
 
 ## 1. Purpose
 
-IMPLEMENTATION.md is the operational layer between design intent and shipped code. DESIGN.md defines *what* the app should look like. IMPLEMENTATION.md defines *how* to get there — the step-by-step process, the quality checks, the tool invocation rules, and the coordination strategy that prevents pages from drifting apart during iterative development.
+`IMPLEMENTATION.md` is the operational layer between design intent and shipped code. `DESIGN.md` defines *what* the app should look like. `VISUAL_IDENTITY.md` defines the rejected pattern catalogue. `IMPLEMENTATION.md` defines *how to get there* — the four-phase migration order, the property-test posture, the lint guardrails, and the verification gates that prevent the codebase from drifting back into AI-slop.
 
 This file exists because:
-- AI agents need explicit workflow instructions, not just design principles
-- Multi-page redesigns drift without a coordination layer
-- Premium quality emerges from structured critique loops, not one-shot generation
-- shadcn/ui + Impeccable skill + manual refinement must work as a unified system
+- The redesign succeeds only when tokens, primitives, screens, and docs land in the documented order.
+- Property tests under `npm run sadtest` are the structural enforcement of `DESIGN.md`; they are not optional.
+- AI agents need explicit workflow instructions, not just design principles.
+- A four-phase migration only stays shippable at every step if everyone follows the same sequence.
 
 ---
 
 ## 2. Workflow Philosophy
 
 ### Core Tenets
-1. **Iterative refinement over one-shot generation** — Never ship a first draft. Every page goes through implementation → critique → refinement → polish.
-2. **Precision over decoration** — Fix spacing and hierarchy before adding visual flair. A perfectly spaced minimal layout beats a decorated messy one.
-3. **Consistency over experimentation** — New pages must feel like they belong. Reuse patterns. Match the existing rhythm. Experimentation happens in the design docs, not in production code.
-4. **Premium restraint over flashy visuals** — If it feels like a template, it's wrong. Premium SaaS is quiet, intentional, and calm.
+
+1. **Tokens are the foundation.** No primitive is restyled before the token it depends on lands in `app/globals.css` and `tailwind.config.ts`. No screen is re-skinned before its primitives are migrated.
+2. **Property tests are the spec.** The 18 properties enumerated in `design.md` § Correctness Properties are the structural definition of "done." If a property test fails, the implementation is wrong, not the test (unless triage reveals a spec gap, in which case escalate).
+3. **The redesign is migrational, not big-bang.** Compatibility shims (the legacy `Stagger`/`StaggerItem`/`HoverLift`/`FadeIn` re-exports, the `<ButtonLoader>` shim, the Button `default → primary` alias) exist to keep the codebase shippable between phases. They are deleted in Phase 4.
+4. **Premium restraint over flashy visuals.** If it triggers a Requirement 13 AI_Slop_Pattern, it is rejected. Restraint is the brief.
+5. **The docs are authoritative for behavior.** When code disagrees with `DESIGN.md`, the code is the bug. When the docs themselves are the bug, fix both in the same change.
 
 ### What "Premium" Means in Practice
-- Every element has a reason to exist
-- Spacing is mathematically consistent (no `p-7`, no `gap-[13px]`)
-- Typography follows the scale exactly
-- Only one accent color appears on screen
-- Motion is so subtle you barely notice it
-- The page feels calm even when dense with data
+
+- Every element resolves to a token; raw hex / `rgb(`/ `oklch(` literals exist only in `tailwind.config.ts`, `app/globals.css`, and `public/**` SVGs.
+- Spacing is on the documented scale; `no-arbitrary-spacing` lint catches the rest.
+- Typography flows through the nine `--text-*` steps; arbitrary `text-[NN]`/`leading-[NN]` is rejected outside the scale layer.
+- One accent color (`oklch(0.78 0.13 78)` — burnished amber). No cobalt, no indigo, no violet, no inline opacity.
+- Motion is meaningful, not decorative. One indeterminate loop visible at a time.
 
 ---
 
-## 3. Global Workflow — The 9-Step Lifecycle
+## 3. The Four-Phase Migration Model
 
-Every page implementation must follow this sequence. Skip no step. Each step produces verifiable output.
+The redesign ships in four atomic phases. The app is shippable at every checkpoint between phases. Tasks in `tasks.md` are organized to match this model exactly.
 
-### Step 1: Read Relevant Specs
-**Input:** Page name (e.g., "dashboard")
-**Actions:**
-1. Read `design-system/DESIGN.md` — global tokens, rules, anti-patterns
-2. Read `design-system/<page>.md` — page-specific layout, components, behavior
-3. Read `design-system/navigation.md` — if the page has navigation elements
-4. Read the existing page source (`app/<route>/page.tsx`) and its components
-
-**Output:** Mental model of what exists vs what the spec demands.
-
-### Step 2: Audit Current Implementation
-**Actions:**
-1. List every component used on the page
-2. Check each component against DESIGN.md token rules
-3. Identify spacing inconsistencies (measure against the spacing scale)
-4. Check typography against the type scale
-5. Verify responsive behavior at 3 breakpoints (mobile, tablet, desktop)
-6. Note any anti-patterns from DESIGN.md §10 or the page spec
-
-**Output:** A prioritized list of weaknesses. Example:
 ```
-- Hero spacing uses py-14 but spec says py-20 on desktop
-- Card padding is p-4 but spec says p-5 for content cards
-- Missing focus-visible on search input
-- Mobile CTA buttons stack incorrectly
+Phase 1 — Tokens          → app/globals.css, tailwind.config.ts, fonts, BrandMark SVG
+Phase 2 — Primitives      → components/ui/*, components/motion/*, components/visual/*, chrome
+Phase 3 — Screens         → landing → auth → dashboard → profile/settings → test-extraction
+Phase 4 — Cleanup         → delete deprecated classes / keyframes / shims, sync docs, enforce budgets
 ```
 
-### Step 3: Identify Weaknesses
-**Actions:**
-1. Categorize weaknesses by severity:
-   - **Critical:** Wrong tokens, broken responsiveness, accessibility failures
-   - **High:** Inconsistent spacing, wrong typography level, missing hover states
-   - **Medium:** Suboptimal component choice, missing empty state
-   - **Low:** Polish details, micro-interactions
-2. Order fixes by priority (critical → high → medium → low)
+### Phase 1 — Tokens
 
-**Output:** Ordered fix list. Do not fix low-priority items before critical ones.
+- Add every color, radius, container, motion, and typography token to `:root` in `app/globals.css`.
+- Mirror them in `tailwind.config.ts` (`theme.extend.colors|borderRadius|maxWidth|transitionDuration|transitionTimingFunction|keyframes|animation`).
+- Swap Inter for Geist Sans (UI) and keep JetBrains Mono (mono) via `next/font`. Preload only the UI sans regular weight.
+- Author `public/brand/mark.svg` and ship `<BrandMark>`.
+- Mark deprecated CSS classes / Tailwind keys with `@deprecated` comments — do not delete yet.
 
-### Step 4: Implement Structural Redesign
-**Actions:**
-1. Fix layout structure first (grid, flex, container widths)
-2. Apply correct spacing tokens (gap, padding, margin)
-3. Replace raw elements with UI components (Button, Card, Input, etc.)
-4. Apply correct color tokens (no raw hex)
-5. Ensure semantic HTML (main, nav, section, h1-h3)
+The phase ends when the property tests under `design-system/__tests__/` for color-token parity, raw-color absence, arbitrary-spacing absence, cobalt absence, font configuration, and Brand_Mark all pass.
 
-**Rules:**
-- Change one section at a time. Verify before moving to the next.
-- Never delete working functionality to "redesign" — enhance, don't replace.
-- Keep existing data flow and API calls intact.
+### Phase 2 — Primitives
 
-**Output:** Structurally correct page with all tokens applied.
+- Rebuild `<Reveal>`, `<Grid>`, `<Loader>`, `<Badge>`, `<Avatar>`, `<Skeleton>`, `<AmbientBackground>`, `<Button>`, `<Card>`, `<Input>`, `<Textarea>`, `<Dialog>`, `<PageLoader>`, `<RouteProgress>`, `<MobileBottomNav>`, `<DashboardHeader>`.
+- Preserve every existing prop signature except where a deprecated visual prop is removed and a migration note is authored in `COMPONENT_PATTERNS.md` (Requirement 8.9).
+- Compatibility shims: `Stagger`/`StaggerItem`/`HoverLift`/`FadeIn` re-export `<Reveal>`; `<ButtonLoader>` re-exports `<Loader size="sm">`; the Button `default` CVA variant aliases `primary`.
+- Restrict `framer-motion` to `<Dialog>` open/close only.
 
-### Step 5: Improve Responsiveness
-**Actions:**
-1. Test mobile layout (<640px): single column, full-width inputs, stacked sections
-2. Test tablet layout (640-1024px): intermediate breakpoints, 2-column grids
-3. Test desktop layout (1024px+): full multi-column, max-width constraints
-4. Verify touch targets ≥44px on all interactive elements
-5. Check that no content is hidden or truncated at any breakpoint
-6. Verify ultrawide behavior (content centered, background solid)
+The phase ends when the redesigned-primitives property tests (forbidden gradients, contrast, reduced-motion, interactive states, touch targets, icon stroke width, ambient-band luminance) all pass.
 
-**Output:** Page that works correctly at all viewport widths.
+### Phase 3 — Screens
 
-### Step 6: Run Critique Pass
-**Actions:**
-1. Invoke `/impeccable critique` on the page
-2. Review every issue raised
-3. Fix critical and high-severity issues
-4. Document any intentional deviations from critique suggestions
+Re-skin in this order — each screen's spec doc lands in the same change:
 
-**Output:** Critiqued and corrected page.
+1. `app/page.tsx` (Landing) — single `<AmbientBackground variant="hero">`, `<Grid cols={3}>` proof points, `max-w-wide`.
+2. `app/(auth)/login/page.tsx` and `app/(auth)/signup/page.tsx` via `<AuthShell>` — `max-w-auth`, no `bg-scene-auth`, no `border-conic-soft`.
+3. `app/(dashboard)/dashboard/page.tsx` and `components/receipts/*` — single hero `<Card>`, segmented filter chips on `bg-accent-tint`, no aurora layering.
+4. `app/(dashboard)/profile/page.tsx` (`max-w-narrow`) and `app/(dashboard)/settings/page.tsx` (`max-w-content`) — single-column stacked sections.
+5. `app/test-extraction/page.tsx` — developer-tool tone preserved; tokens swapped only.
 
-### Step 7: Run Polish Pass
-**Actions:**
-1. Invoke `/impeccable polish` on the page
-2. Refine hover states, focus rings, transitions
-3. Verify motion duration tokens (150ms buttons, 200ms cards)
-4. Check that `prefers-reduced-motion` is respected
-5. Ensure toast notifications use correct position and styling
-6. Verify loading states (spinners, disabled buttons, skeleton if needed)
+The phase ends when the screen-level property tests (type-scale coverage, spacing-scale coverage, urgency indicators, no horizontal overflow, decorative budget) all pass.
 
-**Output:** Polished page with refined interactions.
+### Phase 4 — Cleanup
 
-### Step 8: Validate Consistency with DESIGN.md
-**Actions:**
-1. Run through the DESIGN.md §10 anti-pattern checklist
-2. Verify all colors are Tailwind tokens (no raw hex)
-3. Verify all spacing values are from the spacing scale
-4. Verify typography matches the type scale
-5. Check that only one animated element exists on the page
-6. Confirm no gradients, no glassmorphism, no decorative elements
+- Delete deprecated CSS classes from `app/globals.css`: `border-conic-soft`, `bg-scene-hero`, `bg-scene-auth`, `bg-aurora-action`, `bg-aurora-soft`, `bg-grid-faint`, `mask-fade-radial`, `mask-fade-bottom`, `text-gradient-primary`, `text-gradient-action`, `bg-card-elevated`.
+- Delete deprecated keyframes from `tailwind.config.ts`: `ledger-scan`, `loader-rail`, `loader-step`, `glow-pulse`, `shimmer`, `fade-in-up`, `pulse-red`.
+- Delete deprecated shadow tokens: `shadow-card-sm`, `shadow-card-lift`, `shadow-glow-action`, `shadow-glow-soft`, `inner-hair`. Keep only `shadow-overlay`.
+- Delete the `Stagger`/`StaggerItem`/`HoverLift`/`FadeIn` re-exports, the Button `default` CVA alias, the `<ButtonLoader>` shim, and the `<UrgencyBadge>` `pulse` parent override.
+- Sync `DESIGN.md`, `COMPONENT_PATTERNS.md`, `REFERENCES.md`, `IMPLEMENTATION.md`, `REVIEW.md`, `ACCESSIBILITY.md`, `PERFORMANCE.md`, `VISUAL_IDENTITY.md`, and the per-screen specs.
+- Land the `performance-budget` CI job (`scripts/check-bundle-size.mjs`).
 
-**Output:** DESIGN.md-compliant page.
-
-### Step 9: Move to Next Page
-**Actions:**
-1. Mark the page as "implemented" in your tracking
-2. Note any reusable patterns created during this implementation
-3. Begin Step 1 for the next page
-
-**Output:** Clean handoff to next implementation cycle.
+The phase ends when `no-deprecated.property.test.ts`, `route-inventory.property.test.ts`, `asset-budget.example.test.ts`, and `toaster-config.example.test.ts` all pass and CI is green.
 
 ---
 
-## 4. Impeccable Command System
+## 4. Per-Page Lifecycle
 
-The Impeccable skill provides specialized UI commands. Use them at the right time, in the right order. Never skip critique before polish.
+Within Phase 3, every page implementation follows this sequence. Skip no step.
 
-### `/impeccable critique`
-**When to use:** After structural implementation (Step 6), before polish.
-**What it does:** Analyzes the page for UX issues, visual hierarchy problems, accessibility gaps, cognitive load, and anti-patterns.
-**Expected outcome:** A list of issues ranked by severity with suggested fixes.
-**Best timing:** Immediately after the page renders correctly at all breakpoints.
-**Common use cases:**
-- New page just implemented
-- Existing page being redesigned
-- Page feels "off" but you can't identify why
-**Anti-patterns:**
-- ❌ Using critique before the page is structurally complete
-- ❌ Using critique as a substitute for reading DESIGN.md
-- ❌ Ignoring critique results because "it looks fine to me"
+### Step 1 — Read Relevant Specs
 
-### `/impeccable polish`
-**When to use:** After critique fixes are applied (Step 7).
-**What it does:** Refines micro-interactions, hover states, transitions, spacing subtleties, and visual polish details.
-**Expected outcome:** Specific CSS/animation refinements that elevate the page from "functional" to "premium."
-**Best timing:** After all critique issues are resolved.
-**Common use cases:**
-- Page is functionally correct but feels "flat"
-- Hover states need refinement
-- Transitions feel abrupt
-- Card interactions need more tactility
-**Anti-patterns:**
-- ❌ Using polish before critique (polish won't fix structural issues)
-- ❌ Applying polish suggestions that violate DESIGN.md motion rules
-- ❌ Adding animations that weren't suggested
+- `design-system/DESIGN.md` for global tokens, motion, anti-patterns.
+- `design-system/VISUAL_IDENTITY.md` for the rejected AI_Slop_Pattern catalogue.
+- `design-system/<page>.md` for the page-specific composition (hero, content order, container).
+- `design-system/navigation.md` if the page consumes the `DashboardHeader` or `MobileBottomNav`.
+- `design-system/COMPONENT_PATTERNS.md` for the data-card, stat-card, form-card, empty-state, auth-shell, and dashboard-hero patterns.
+- The existing page source.
 
-### `/impeccable typeset`
-**When to use:** When typography feels inconsistent or the hierarchy is unclear.
-**What it does:** Analyzes and refines the typographic system — font sizes, weights, line heights, and hierarchy.
-**Expected outcome:** A consistent type ramp with clear visual hierarchy.
-**Best timing:** After layout is stable, before final polish.
-**Common use cases:**
-- Multiple font sizes feel randomly chosen
-- Heading hierarchy is unclear
-- Line heights create uneven rhythm
-**Anti-patterns:**
-- ❌ Using typeset before the layout structure is finalized
-- ❌ Deviating from the DESIGN.md type scale based on typeset suggestions
+### Step 2 — Audit Current Implementation
 
-### `/impeccable shape`
-**When to use:** When component shapes, border radii, or visual forms feel inconsistent.
-**What it does:** Harmonizes border radii, component proportions, and visual shapes across the page.
-**Expected outcome:** Consistent visual language where all elements feel like they belong to the same family.
-**Best timing:** After component implementation, before polish.
-**Common use cases:**
-- Mixed border radii on cards vs buttons vs inputs
-- Inconsistent component sizing
-- Visual weight of elements feels unbalanced
-**Anti-patterns:**
-- ❌ Using shape before components are correctly implemented
-- ❌ Changing border radii away from DESIGN.md tokens
+List every component used. Check each against:
+- Token rules in `DESIGN.md` § Token system.
+- The redesigned primitive contracts in `COMPONENT_PATTERNS.md`.
+- The 14 AI_Slop_Pattern items in Requirement 13.
 
-### `/impeccable craft`
-**When to use:** For complex UI components that need careful construction (modals, dropdowns, data displays).
-**What it does:** Provides detailed implementation guidance for specific UI patterns.
-**Expected outcome:** Production-grade component code with proper accessibility, states, and edge cases.
-**Best timing:** When building a new complex component from scratch.
-**Common use cases:**
-- Building a new Dialog variant
-- Creating a data table component
-- Implementing a dropdown menu
-**Anti-patterns:**
-- ❌ Using craft for simple components (Button, Input, Badge)
-- ❌ Using craft instead of reusing existing components
+Produce a prioritized fix list.
+
+### Step 3 — Implement Structural Re-skin
+
+- Fix layout structure first (container width, `<Grid>` usage, section order).
+- Replace deprecated tokens / classes with redesigned tokens.
+- Replace deprecated primitives (`Stagger`, `FadeIn`, `<ButtonLoader>`, etc.) with their redesigned counterparts.
+- Keep data flow, API calls, and prop signatures intact.
+
+### Step 4 — Verify Responsiveness
+
+- Mobile (<640px): single column, full-width inputs, stacked sections.
+- Tablet (640–1024px): intermediate layouts; `<Grid cols={2}>` where the spec allows.
+- Desktop (≥1024px): full multi-column with the documented `max-w-*` clamp.
+- Touch targets ≥ 44×44 CSS pixels.
+- No horizontal overflow at any documented viewport (`no-horizontal-overflow.property.test.ts` is the gate).
+
+### Step 5 — Run Property Tests
+
+```
+npm run sadtest
+```
+
+This runs Vitest against every `design-system/__tests__/*.test.ts` file. The 18 redesign properties are the structural definition of "done" for this page.
+
+If a property fails, **triage**:
+- Test is wrong → fix the test, document the change.
+- Implementation is wrong → fix the code.
+- Spec is wrong → escalate to the user; never silently change the acceptance criteria.
+
+### Step 6 — Manual Quality Pass
+
+- Hover, focus-visible, active, and disabled states present on every interactive element.
+- Reduced-motion (`prefers-reduced-motion: reduce`): every animation goes static via `data-reduced-motion="static"`.
+- Toast / loader / dialog semantics preserved.
+- Single decorative element per screen (Requirement 13.13, 13.14).
+
+### Step 7 — Validate Against `DESIGN.md` Anti-patterns
+
+Run through the 14 AI_Slop_Pattern items. Any single hit is a hard fail. The `REVIEW.md` Tier-1 checklist enumerates each item with a pass/fail criterion.
+
+### Step 8 — Update the Page Spec
+
+Update `design-system/<page>.md` so the documented composition matches the shipped composition. The doc is the source of truth; the code is the bug if they diverge.
+
+### Step 9 — Move to the Next Page
+
+Mark the page complete only when every property test in scope is green and no Tier-1 AI_Slop_Pattern is present.
 
 ---
 
-## 5. shadcn/ui Usage Rules
+## 5. Tooling and Commands
 
-### Preferred Components (Already Implemented)
-| Component | File | Use For |
+### Project scripts
+
+| Command | Purpose | Notes |
 |---|---|---|
-| **Button** | `components/ui/button.tsx` | All clickable actions. 4 variants, 4 sizes. |
-| **Card** | `components/ui/card.tsx` | All content containers. Card, CardHeader, CardContent, CardFooter. |
-| **Badge** | `components/ui/badge.tsx` | Status indicators, tags, labels. |
-| **Input** | `components/ui/input.tsx` | Text inputs, search fields. |
-| **Textarea** | `components/ui/input.tsx` | Multi-line text input. |
-| **Dialog** | `components/ui/dialog.tsx` | Modals, confirmations. |
+| `npm run dev` | Start the Next.js dev server on port 3100 | Turbopack enabled |
+| `npm run build` | Production build | Required before bundle-size check |
+| `npm run start` | Run the production build | After `npm run build` |
+| `npm run lint` | ESLint with `--max-warnings=0` | Includes `no-raw-color` and `no-arbitrary-spacing` |
+| `npm run typecheck` | `tsc --noEmit` | Type-only verification |
+| `npm run sadtest` | Run Vitest once (the property + example test suite) | The redesign's primary structural gate |
+| `npm run test:watch` | Vitest in watch mode | For local iteration only |
+| `node scripts/check-bundle-size.mjs` | Compare `/dashboard` first-load JS + total CSS against `design-system/__tests__/bundle-baseline.json` | Run after `npm run build` |
 
-### Extension Strategy
-- **Add variants via CVA** — Button variants are defined in `buttonVariants`. New variants follow the same pattern.
-- **Extend via `className`** — 90% of customizations should be `className` overrides, not component changes.
-- **New components** — Create in `components/ui/` following the existing pattern (minimal wrapper, `className` passthrough, `cn()` merging).
+### CI jobs
 
-### Customization Boundaries
-- **DO:** Change padding, colors (via tokens), icon sizes, border styles via `className`
-- **DON'T:** Change the component's core structure, remove accessibility attributes, change the CVA base styles
-- **DO:** Add new variants to CVA when a pattern repeats 3+ times
-- **DON'T:** Create one-off variants that duplicate existing ones
+`.github/workflows/ci.yml` runs the following:
 
-### Consistency Requirements
-- All buttons must use the Button component. No raw `<button>` with Tailwind classes.
-- All cards must use the Card component. No raw `<div>` with card-like styling.
-- All inputs must use Input or Textarea. No raw `<input>` with custom classes.
-- Icons must come from `lucide-react`. No other icon library.
+- `lint` — `npm run lint`
+- `typecheck` — `npm run typecheck`
+- `sadtest` — `npm run sadtest`
+- `performance-budget` — `npm run build` then `node scripts/check-bundle-size.mjs`
 
-### Accessibility Expectations
-- Every interactive element must have a visible focus state
-- Icons without text must have `aria-hidden="true"` and the parent must have `aria-label`
-- Dialogs must trap focus and close on Escape
-- Form inputs must have associated labels
+Every job blocks merge.
 
-### Achieving Premium SaaS Aesthetics with shadcn/ui
-shadcn/ui provides functional components. Premium feel comes from:
-1. **Spacing** — More generous than default. Use `p-5` or `p-6` instead of `p-4`.
-2. **Typography** — Inter + JetBrains Mono. Consistent scale. No default system fonts.
-3. **Color restraint** — Dark theme with one accent. No rainbow of semantic colors.
-4. **Border subtlety** — `border-border` (#2A2A3A) is barely visible against `bg-surface` (#14141B). This creates depth without heavy lines.
-5. **Motion precision** — 150ms for buttons, 200ms for cards. No bouncy springs.
+### Lint guardrails
 
----
+Two custom ESLint rules enforce the token system at edit time:
 
-## 6. Page-by-Page Execution Strategy
+- **`no-raw-color`** (`eslint-rules/no-raw-color.js`) flags `#[0-9a-fA-F]{3,8}`, `rgb(`, `rgba(`, `hsl(`, `hsla(`, `oklch(`, `oklab(` literals in `app/`, `components/`, `lib/`. Allowed in `tailwind.config.ts`, `app/globals.css`, and `public/**/*.svg`. Per-line escape hatch: trailing `// allow:color` comment.
+- **`no-arbitrary-spacing`** (`eslint-rules/no-arbitrary-spacing.js`) flags `(p|m|gap|space-[xy]|top|left|right|bottom|inset|w|h|min-w|min-h|max-w|max-h|text|leading|tracking|grid-cols|grid-rows)-\[…\]` arbitrary-value Tailwind utilities. Allowed in `components/ui/typography.tsx`, `components/ui/grid.tsx`, and `tailwind.config.ts`.
 
-### Why Not Redesign All at Once
-- **Context window limits** — AI agents can't hold all pages in memory simultaneously
-- **Pattern discovery** — Each page reveals reusable patterns for the next
-- **Quality degradation** — Simultaneous redesigns drift apart without a reference implementation
-- **Testing burden** — One page at a time means one thing to verify
+Both rules ship at severity `error`.
 
-### Incremental Redesign Order
-Redesign pages in this order to build patterns progressively:
+### Property-test posture
 
-1. **Landing page** (`/`) — Simplest page, establishes the public-facing aesthetic
-2. **Login page** (`/login`) — Auth pattern, card-centric layout
-3. **Signup page** (`/signup`) — Reuses login patterns, minor variations
-4. **Dashboard** (`/dashboard`) — Most complex, benefits from patterns established above
-5. **Test extraction** (`/test-extraction`) — Technical page, minimal design
-6. **Settings** (planned) — Uses patterns from dashboard + auth
-7. **Profile** (planned) — Uses patterns from settings
+Property tests live in `design-system/__tests__/*.test.ts` and are picked up by the existing Vitest `sadtest` config. They use `fast-check` with smart generators in `_arbitraries.ts` (`arbInScopeScreen`, `arbButtonProps`, `arbReceipt`, `arbViewport`, `arbTextContent`).
 
-### How to Prevent Design Drift
-1. **Complete one page fully before starting the next** — A half-done page can't serve as a reference.
-2. **Extract reusable patterns** — After each page, note what could be reused (e.g., "the stat card pattern from dashboard should be used in settings").
-3. **Cross-reference** — When implementing page N, check pages 1 through N-1 for relevant patterns.
-4. **Re-audit periodically** — After every 3 pages, re-audit the first page against DESIGN.md to catch drift.
-
-### How to Reuse Existing Patterns
-- **Copy the pattern, not the code** — Understand *why* a pattern works, then apply the principle.
-- **Match spacing exactly** — If dashboard uses `gap-6` between sections, settings must too.
-- **Match component variants** — If landing uses `size="lg"` for hero CTAs, don't use `size="default"` for equivalent prominence elsewhere.
-- **Match typography levels** — If dashboard section titles use `text-xl font-semibold`, all section titles across all pages must match.
+Each property test:
+- States the property number and which requirement clauses it validates (`**Validates: Requirements X.Y**`).
+- Implements one and only one property — never two in the same file.
+- Uses the smart generators and the `In_Scope_Screen` scope; never invents new screens or new prop spaces.
 
 ---
 
-## 7. Critique & Polish Loops
+## 6. shadcn-style Component Rules
 
-### The 5-Pass Quality System
+### Preferred primitives
 
-#### Pass 1: Implementation
-**Goal:** Functional, structurally correct page.
-**Checklist:**
-- [ ] All sections present and in correct order
-- [ ] All components use correct UI library components
-- [ ] All tokens applied (colors, spacing, typography)
-- [ ] Data flows work (API calls, state management)
-- [ ] No console errors
-
-#### Pass 2: Critique
-**Goal:** Identify UX and hierarchy issues.
-**Method:** `/impeccable critique`
-**Checklist:**
-- [ ] Visual hierarchy is clear (most important → least important)
-- [ ] Cognitive load is manageable (not too many elements competing)
-- [ ] Information architecture makes sense
-- [ ] Accessibility issues identified
-- [ ] Anti-patterns flagged
-
-#### Pass 3: Refinement
-**Goal:** Fix all critique issues.
-**Checklist:**
-- [ ] All critical issues resolved
-- [ ] All high-severity issues resolved
-- [ ] Medium issues addressed or documented as intentional
-- [ ] No new issues introduced by fixes
-- [ ] Re-test all breakpoints after changes
-
-#### Pass 4: Responsiveness
-**Goal:** Perfect behavior at all viewport sizes.
-**Checklist:**
-- [ ] Mobile (<640px): single column, full-width inputs, readable text
-- [ ] Tablet (640-1024px): intermediate layouts, no awkward breaks
-- [ ] Desktop (1024px+): full layout, max-width constraints
-- [ ] Ultrawide: centered content, no stretching
-- [ ] Touch targets ≥44px
-- [ ] No horizontal scroll at any breakpoint
-
-#### Pass 5: Final Polish
-**Goal:** Premium feel through micro-interactions.
-**Method:** `/impeccable polish`
-**Checklist:**
-- [ ] Hover states are subtle and consistent
-- [ ] Focus rings are visible but not aggressive
-- [ ] Transitions use correct duration tokens
-- [ ] Button press feedback (`active:scale-[0.98]`)
-- [ ] Loading states are non-jarring
-- [ ] Empty states are helpful, not punishing
-- [ ] Toast notifications appear correctly
-- [ ] `prefers-reduced-motion` disables all motion
-
-### How Premium Quality Emerges
-Premium quality is the accumulation of correct micro-decisions:
-- A card that lifts 2px on hover instead of 4px
-- A border that's `#2A2A3A` instead of `#333`
-- A gap of `24px` instead of `20px`
-- A font weight of `600` instead of `700`
-- A transition of `150ms` instead of `300ms`
-
-No single decision makes the page premium. The sum of all correct decisions does. The critique → refinement → polish loop ensures every decision is examined.
-
----
-
-## 8. Responsiveness Workflow
-
-### Mobile-First Implementation
-1. **Start at 375px viewport** (iPhone SE) — the most constrained width
-2. **Build single-column layout** — everything stacks vertically
-3. **Full-width inputs and buttons** — no fixed widths on mobile
-4. **`px-6` horizontal padding** — 24px side margins
-5. **Test at 375px, 390px, 414px** — common mobile widths
-
-### Breakpoint Validation
-For each breakpoint, verify:
-| Breakpoint | Check |
-|---|---|
-| <640px | Single column, readable text, tappable targets |
-| ≥640px (sm) | 2-column grids appear where specified |
-| ≥768px (md) | Horizontal nav, side-by-side CTAs |
-| ≥1024px (lg) | Full multi-column, max-width constraints active |
-| ≥1280px (xl) | Content centered, no stretching |
-
-### Touch Ergonomics
-- **Minimum touch target: 44x44px** — Apple HIG standard
-- **Button heights:** `h-10` (40px) minimum, `h-11` (44px) for primary actions
-- **Spacing between tappable elements:** `gap-2` minimum (8px)
-- **No hover-dependent critical actions** — everything must work with touch alone
-- **No dense button groups** on mobile — if buttons wrap, that's fine
-
-### Ultrawide Layout Handling
-- **Content stays centered** — `max-w-{n} mx-auto`
-- **Background remains solid `bg-bg`** — no alternating sections
-- **No full-bleed content** — text readability degrades on ultrawide
-- **No horizontal centering tricks** — just `mx-auto` on the container
-
-### Spacing Adaptation Rules
-- **Page padding:** `px-6` mobile → `md:px-8` tablet+
-- **Section gaps:** Same at all breakpoints (`gap-6` is always `gap-6`)
-- **Card padding:** Same at all breakpoints (don't reduce padding on mobile)
-- **Grid gaps:** Same at all breakpoints (don't tighten gaps on mobile)
-
----
-
-## 9. Motion & Interaction Workflow
-
-### When to Add Animations
-- **Only during the polish pass (Pass 5)** — Never during structural implementation
-- **Only when DESIGN.md explicitly allows it** — Check §7 Motion System
-- **Only one animated element per page** — Currently: red pulse on urgency badges
-
-### How Motion Should Remain Subtle
-- **Duration:** 150ms for micro-interactions, 200ms for larger transitions
-- **Easing:** CSS default `ease` (no custom cubic-bezier unless specified)
-- **Properties:** Only `transform` and `opacity` (GPU-composited, no layout thrashing)
-- **Distance:** Cards lift `2px` (0.5 Tailwind unit), not `4px` or more
-
-### Interaction Refinement Process
-1. **Identify all interactive elements** on the page
-2. **Verify each has a hover state** (desktop) that matches its variant
-3. **Verify each has a focus-visible state** (keyboard)
-4. **Verify each has an active state** (press feedback)
-5. **Verify each has a disabled state** (during async operations)
-6. **Check that no element is missing any of these states**
-
-### Hover/Focus Behavior Expectations
-| Element | Hover | Focus-Visible | Active | Disabled |
-|---|---|---|---|---|
-| Primary Button | `brightness-110` | `outline-2 outline-border-focus` | `scale-[0.98]` | `opacity-50` |
-| Secondary Button | `bg-surface-hover` | Same | `scale-[0.98]` | `opacity-50` |
-| Ghost Button | `text-text-primary` | Same | `scale-[0.98]` | `opacity-50` |
-| Danger Button | `bg-red-500/15` | Same | `scale-[0.98]` | `opacity-50` |
-| Card | `-translate-y-0.5 border-border-focus` | N/A (not focusable) | N/A | N/A |
-| Input | N/A | `border-border-focus` | N/A | N/A |
-| Link | `text-blue-300` | `outline-2 outline-border-focus` | N/A | N/A |
-
----
-
-## 10. Anti-Drift Rules
-
-### Preventing Inconsistent Layouts
-- **Same page type = same container width** — All auth pages use `max-w-md`. All data pages use `max-w-6xl`.
-- **Same section role = same spacing** — All "major section" separators use `gap-6`.
-- **Same component role = same variant** — All primary CTAs use `variant="default" size="lg"`.
-
-### Preventing Typography Drift
-- **Lock the type scale** — DESIGN.md §3 is the only allowed type scale. No `text-[15px]`, no `text-base` where `text-sm` is specified.
-- **Same semantic level = same classes** — All page titles use `text-2xl font-semibold`. All section titles use `text-xl font-semibold`.
-- **No font size experimentation** — If a heading "feels too big," the problem is spacing around it, not the font size.
-
-### Preventing Random Visual Experimentation
-- **No "let me try something" moments** — Every visual decision must reference a rule in DESIGN.md or a page spec.
-- **No copying from other projects** — Receipt Guardian has its own design language. Stripe's button style is not our button style.
-- **No "this looks cool" additions** — Cool is the enemy of consistent. Consistent is premium.
-
-### Preventing Component Inconsistency
-- **One Button component** — No alternative button implementations. If you need a new variant, add it to CVA.
-- **One Card component** — No alternative card implementations. If you need a different card style, use `className`.
-- **One set of icons** — Only `lucide-react`. No mixing icon libraries.
-
-### Preventing Excessive Decoration
-- **Count decorative elements** — If you can count more than 0, you have too many.
-- **The "remove it" test** — If removing an element doesn't hurt usability, remove it.
-- **The "template" test** — If the page looks like it came from a Tailwind template, it needs less decoration.
-
-### Preventing AI-Generated Template Aesthetics
-AI models default to certain patterns that must be actively resisted:
-- ❌ Gradient hero sections with centered text
-- ❌ Feature grids with emoji icons
-- ❌ "How it works" sections with numbered steps
-- ❌ Testimonial carousels
-- ❌ Footer with 4-column link lists
-- ❌ Animated counters/statistics
-- ❌ Glassmorphism cards
-- ❌ Purple/blue gradient CTAs
-- ❌ "Trusted by thousands" social proof
-
-If an AI generates any of these, it's wrong. Refer to DESIGN.md §10.
-
----
-
-## 11. Priority Hierarchy
-
-When making implementation decisions, resolve conflicts using this order:
-
-| Priority | Concern | Example Decision |
+| Component | File | Use for |
 |---|---|---|
-| **1. Usability** | Can the user accomplish their task? | A button must be tappable before it's beautiful. |
-| **2. Hierarchy** | Is the visual importance clear? | The primary CTA must dominate the secondary. |
-| **3. Responsiveness** | Does it work on all devices? | Mobile layout must work before desktop is perfected. |
-| **4. Typography** | Is the text system correct? | Font sizes and weights must match the scale. |
-| **5. Spacing** | Is the rhythm consistent? | Gaps and padding must use the spacing scale. |
-| **6. Interaction quality** | Do hover/focus/active states work? | Every interactive element must have complete states. |
-| **7. Motion** | Are animations subtle and meaningful? | Only add motion after everything above is correct. |
-| **8. Decoration** | Are there unnecessary elements? | Remove decoration. Then remove more. |
+| **Button** | `components/ui/button.tsx` | Every clickable action — 4 variants × 4 sizes |
+| **Card** | `components/ui/card.tsx` | Every content container — uniform `p-5` |
+| **Input** / **Textarea** | `components/ui/input.tsx` | Every text input |
+| **Dialog** | `components/ui/dialog.tsx` | Every modal — the only retained `framer-motion` consumer |
+| **Badge** | `components/ui/badge.tsx` | Status / urgency / tag indicators |
+| **Avatar** | `components/ui/avatar.tsx` | User identity surfaces |
+| **Skeleton** | `components/ui/skeleton.tsx` | Async placeholder fills (static) |
+| **Loader** | `components/ui/loaders.tsx` | Every async progress signal — single dot + label |
+| **PageLoader** | `components/ui/page-loader.tsx` | Full-page route load |
+| **RouteProgress** | `components/ui/route-progress.tsx` | The single allowed indeterminate loop during navigation |
+| **Grid** | `components/ui/grid.tsx` | Every multi-column layout (forbids one-off `grid-cols-[…]`) |
 
-**Rule:** Never sacrifice a higher priority for a lower one. A beautiful button that doesn't work is worse than an ugly button that does.
+### Extension strategy
 
----
+- **Add variants via CVA** when a pattern repeats 3+ times. Do not fork primitives.
+- **Override via `className`** for the final 5–10% of differences; primitives merge with `cn()`.
+- **New primitives** go in `components/ui/` and follow the existing prop-passthrough + `cn()` pattern.
 
-## 12. Example Workflows
+### Customization boundaries
 
-### Landing Page Redesign Workflow
-```
-1. Read design-system/DESIGN.md
-2. Read design-system/landing.md
-3. Read app/page.tsx (current implementation)
-4. Audit: check spacing, typography, component usage
-5. Identify: hero spacing off, CTA button sizes inconsistent
-6. Fix: apply correct py-14 md:py-20, use size="lg" for both CTAs
-7. Test: mobile (single col), tablet (side-by-side CTAs), desktop (full width)
-8. /impeccable critique → fix issues
-9. /impeccable polish → refine interactions
-10. Validate against DESIGN.md §10 anti-patterns
-11. Mark landing page complete
-```
+- **DO** change padding, color tokens, icon sizes, border styles via `className`.
+- **DON'T** change the base CVA, remove accessibility attributes, or mix icon libraries.
+- **DO** add a Button variant if a third primary-CTA color emerges (none is planned).
+- **DON'T** create one-off variants that duplicate existing ones.
 
-### Dashboard Refinement Workflow
-```
-1. Read design-system/dashboard.md
-2. Read components/receipts/receipt-dashboard.tsx
-3. Audit: check all 5 sections, verify grid breakpoints
-4. Identify: stat cards need font-mono, empty state needs border-dashed
-5. Fix: apply JetBrains Mono to stat values, add border-dashed to empty state
-6. Test: mobile (stacked), tablet (2-col receipts), desktop (3-col receipts)
-7. /impeccable critique → fix hierarchy issues
-8. /impeccable polish → refine card hovers, button states
-9. Validate: only one animation (red pulse), no gradients, correct tokens
-10. Mark dashboard complete
-```
+### Accessibility expectations
 
-### Critique Loop Workflow
-```
-1. Complete structural implementation of a page
-2. Verify it renders at all breakpoints
-3. Run /impeccable critique
-4. Review each issue:
-   - Critical: fix immediately
-   - High: fix before moving on
-   - Medium: fix or document
-   - Low: note for polish pass
-5. Re-test after fixes
-6. Run /impeccable critique again if major changes were made
-7. Proceed to polish pass
-```
+- Every interactive element ships hover, focus-visible, active, and disabled states.
+- Decorative icons get `aria-hidden="true"` and inherit `currentColor`; the parent carries the `aria-label`.
+- Dialogs trap focus and close on Escape.
+- Every input has an associated label.
+- Focus-visible includes a non-color signal (thickness, offset, or shape change) — Requirement 11.3.
 
-### Polish Workflow
-```
-1. All critique issues resolved
-2. Run /impeccable polish
-3. Apply suggested refinements that:
-   - Match DESIGN.md motion rules
-   - Don't add new animations beyond the allowed limit
-   - Don't change spacing or typography
-4. Manually verify:
-   - Every button has hover + focus-visible + active + disabled states
-   - Every card has hover lift (if interactive)
-   - Every input has focus border transition
-   - Toast notifications appear at bottom-right
-5. Final check: does the page feel calm and intentional?
-```
+### Achieving premium feel with these primitives
+
+Premium is the sum of correct micro-decisions:
+1. **Spacing is on the scale.** No `p-7`. No `gap-[13px]`.
+2. **Typography flows through the type scale.** Geist Sans + JetBrains Mono with `cv11`/`ss03`/`tnum`. No system fonts.
+3. **Color restraint.** One accent (amber `oklch(0.78 0.13 78)`). One tinted-accent (`bg-accent-tint`). Semantic colors only for status.
+4. **Border subtlety.** `border-border` is barely visible against `surface`; that is intentional.
+5. **Motion is state, not entrance.** 150ms hover, 220ms card lift, 80ms press. No bounce, no spring.
 
 ---
 
-## 13. Premium UX Standards
+## 7. Anti-Drift Rules
 
-### What Makes UI Feel Premium
-Premium UI is defined by what's *absent*, not what's *present*:
-- **Absent:** Gradients, shadows, decorations, emoji, multiple colors, animations, clutter
-- **Present:** Perfect spacing, consistent typography, clear hierarchy, one accent color, subtle motion
+The following rules block the codebase from regressing into AI-slop. Each rule maps to a Requirement clause and a property test.
 
-### How to Create Calm Visual Density
-- **Compartmentalize** — Put related information in cards. Cards create visual boundaries that reduce perceived complexity.
-- **Breathe** — More whitespace than you think is necessary. When in doubt, add another `gap-4`.
-- **Limit columns** — 3 columns max for cards. 2 columns for forms. 1 column for reading.
-- **Mute secondary information** — Use `text-secondary` and `text-muted` aggressively. Not everything is `text-primary` importance.
+### Token discipline
+- Same role → same token. All page titles use `text-2xl font-semibold tracking-[-0.015em]` (= `--text-title-lg`).
+- Same component role → same variant. Primary CTAs use `<Button variant="primary" size="lg">` everywhere.
+- Same container type → same width token. Auth pages use `max-w-auth`; data pages use `max-w-wide`.
+- No font-size experimentation. If a heading "feels too big", the spacing is wrong, not the size.
 
-### How to Create Intentional Hierarchy
-- **Size = importance** — The most important element is the largest. No exceptions.
-- **Color = action** — Blue means "click me." Nothing else should be blue.
-- **Position = priority** — Top-left is most important (F-pattern reading). Bottom-right is least.
-- **Whitespace = grouping** — Things closer together are related. Things further apart are separate categories.
+### Component discipline
+- One Button. One Card. One Input. One Loader. One Grid.
+- One icon library (`lucide-react`) with one stroke width (`1.75`) and a curated allow-list.
+- The Brand_Mark is an SVG asset; never a Lucide icon in a tile.
 
-### How to Avoid AI-Slop Aesthetics
-AI-generated UI tends toward specific patterns. Actively resist:
-- **Over-decoration:** Gradients, shadows, blur effects, background patterns
-- **Template layouts:** Hero → Features → Testimonials → CTA → Footer
-- **Color overload:** Purple gradients, blue-to-cyan, multiple accent colors
-- **Motion excess:** Fade-in on scroll, stagger animations, hover scale effects
-- **Generic typography:** System fonts, inconsistent sizes, no type scale
+### Decorative discipline
+- At most one decorative element per screen (Requirement 13.13, 13.14).
+- The "remove it" test: if removing an element doesn't hurt usability, remove it.
+- The "template" test: if it could be lifted into a Tailwind UI template wholesale, it is wrong.
 
-**The Receipt Guardian aesthetic is:** Dark, restrained, typography-driven, one blue accent, mathematically spaced, motion-minimal. If it doesn't match this description, it's wrong.
+### Forbidden AI-template patterns
+
+Actively resist:
+- Tailwind-default cobalt / indigo / violet accents.
+- Purple-to-blue, blue-to-cyan, orange-to-pink linear gradients.
+- `bg-clip-text` gradient text.
+- Masked dotted / grid mesh backgrounds.
+- Radial "aurora" or "spotlight" gradient blobs.
+- Conic-gradient halos around icon / logo tiles.
+- Glassmorphism (translucent fill + `backdrop-blur-*`) outside the Toaster and modal scrim.
+- Stagger-fade entrance animations on lists, hero sections, or proof grids.
+- "Trusted by thousands", "How it works", "Get started in 60 seconds", "Quiet deadlines. Loud savings." as decorative copy.
+- Lucide icons used as the brand mark inside a rounded-square tile.
+
+The full catalogue is in `VISUAL_IDENTITY.md` and Requirement 13.
+
+---
+
+## 8. Priority Hierarchy
+
+Resolve conflicts using this order:
+
+| Priority | Concern | Example |
+|---|---|---|
+| 1. Usability | Can the user accomplish the task? | Tappable before beautiful |
+| 2. Accessibility | WCAG 2.1 AA contrast, focus-visible non-color signal, reduced-motion | Non-negotiable |
+| 3. Hierarchy | Is the visual importance clear? | Primary CTA dominates |
+| 4. Responsiveness | Works at every documented viewport? | No horizontal overflow |
+| 5. Token compliance | Are colors, spacing, type all on the scale? | `no-raw-color`, `no-arbitrary-spacing` |
+| 6. Interaction quality | Hover / focus / active / disabled all present? | Every interactive element |
+| 7. Motion restraint | One indeterminate loop max, transform/opacity only | `attention` + `route-progress` |
+| 8. Decoration restraint | At most one decorative element per screen | The "remove it" test |
+
+Never sacrifice a higher priority for a lower one. A beautifully gradient-laden button that fails contrast is still wrong.
+
+---
+
+## 9. Example Workflows
+
+### Token addition workflow
+
+```
+1. Add the token to :root in app/globals.css.
+2. Mirror it in tailwind.config.ts under theme.extend.{colors|borderRadius|maxWidth|...}.
+3. Run npm run sadtest — the token-parity property test will fail until both sides agree.
+4. Document the token in DESIGN.md § Token system and in REFERENCES.md § 1.
+5. Run npm run lint and npm run typecheck.
+```
+
+### Primitive migration workflow
+
+```
+1. Read the primitive's contract in COMPONENT_PATTERNS.md.
+2. Refactor the primitive to consume only redesigned tokens and the redesigned Motion_Language.
+3. Preserve the prop signature. If a prop is removed, add a migration note in COMPONENT_PATTERNS.md.
+4. Add or update the corresponding property test under design-system/__tests__/.
+5. Run npm run sadtest.
+6. Run npm run lint, npm run typecheck, npm run build.
+7. Update REFERENCES.md if the contract changed.
+```
+
+### Screen re-skin workflow
+
+```
+1. Read DESIGN.md, VISUAL_IDENTITY.md, design-system/<page>.md, navigation.md.
+2. Audit the current page against the AI_Slop_Pattern checklist.
+3. Replace deprecated tokens / primitives with redesigned counterparts.
+4. Verify at 375px, 768px, 1280px.
+5. Run npm run sadtest.
+6. Update design-system/<page>.md to match the shipped composition.
+7. Run REVIEW.md Tier-1 checklist (AI_Slop_Pattern hard-fail).
+8. Mark the page complete.
+```
+
+### Bundle-budget workflow
+
+```
+1. Run npm run build.
+2. Run node scripts/check-bundle-size.mjs.
+3. If the script exits non-zero, the redesign exceeded the budget.
+4. Investigate: which import added weight? Can it be lazy-loaded? Can a primitive shrink?
+5. Re-run until green.
+```
+
+---
+
+## 10. Premium UX Standards
+
+### What makes the redesigned UI feel premium
+
+Premium is defined by what is *absent*, not what is *present*:
+
+- **Absent:** gradients, glassmorphism, conic halos, shadows on resting cards, decorative tiles around icons, multi-color palettes, stagger entrances, fade-up reveals, generic placeholder copy.
+- **Present:** mathematical spacing, the Geist + JetBrains Mono pair with three OpenType features, one amber accent, subtle borders, single-purpose motion, token-driven everything.
+
+### Calm visual density
+
+- Compartmentalize related information in cards (`p-5`, `bg-surface`, `border-border`, `rounded-lg`).
+- Breathe — `gap-6` between subsections, `gap-8` between top-level sections.
+- Limit columns — three max for cards, two for forms, one for reading.
+- Mute secondary information aggressively — `text-text-secondary` and `text-text-muted` are real tools, not fallbacks.
+
+### Intentional hierarchy
+
+- **Size = importance.** The most important element is the largest. No exceptions.
+- **Color = action.** Amber means "click me." Nothing else is amber.
+- **Position = priority.** Top-left is most important; bottom-right is least.
+- **Whitespace = grouping.** Things closer together are related; things further apart are separate categories.
+
+### Avoiding AI-slop aesthetics
+
+The Receipt Guardian aesthetic is: dark canvas, restrained, typography-driven, one amber accent, mathematically spaced, motion-minimal. If a generated draft does not match this description, it is wrong. The full rejection catalogue lives in `VISUAL_IDENTITY.md` and is enforced by Requirement 13 plus the `REVIEW.md` Tier-1 checklist.
 
 ---
 
 ## Document Maintenance
 
-### When to Update IMPLEMENTATION.md
-- New Impeccable commands become available
-- New shadcn/ui components are added to the library
-- A workflow step proves consistently problematic
-- A new anti-pattern is discovered across multiple pages
-- The page execution order changes
+### When to update `IMPLEMENTATION.md`
 
-### When NOT to Update IMPLEMENTATION.md
-- A single page needs a one-off workflow adjustment
-- A component gets a minor `className` customization
-- Content or copy changes
+- A new lint rule, property test category, or CI job is added.
+- A workflow step proves consistently problematic and the fix is systemic.
+- A new component primitive enters `components/ui/`.
+- A phase of the migration completes and the migration model needs updating.
+
+### When NOT to update `IMPLEMENTATION.md`
+
+- A single page needs a one-off workflow adjustment (document it in the page spec, not here).
+- A component gets a minor `className` customization.
+- Content or copy changes.
 
 ### Version
-This is a living document. As the application grows and patterns mature, workflows should be refined. The goal is not to freeze the process but to ensure every change is intentional and documented.
+
+This is a living document. As the codebase grows and patterns mature, the workflow should be refined. The goal is not to freeze the process but to ensure every change is intentional, tokenized, and tested.

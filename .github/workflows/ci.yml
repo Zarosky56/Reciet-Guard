@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  validate:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +17,39 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+
+  sadtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run sadtest
+
+  # Enforces Requirements 12.1 (/dashboard first-load JS ≤ baseline + 10 KB
+  # gzipped) and 12.2 (total CSS ≤ baseline + 5 KB gzipped) on every PR.
+  performance-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
       - run: npm run build
+      - run: node scripts/check-bundle-size.mjs

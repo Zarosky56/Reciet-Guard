@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2025-01-pre-redesign",
+  "scope": {
+    "pages": "app/**/page.tsx",
+    "apiRoutes": "app/api/**/route.ts",
+    "notes": "Next.js App Router conventions: parenthesized route groups (e.g. (auth), (dashboard)) are stripped from the URL path; dynamic segments like [id] are preserved verbatim."
+  },
+  "pages": [
+    "/",
+    "/dashboard",
+    "/login",
+    "/profile",
+    "/settings",
+    "/signup",
+    "/test-extraction"
+  ],
+  "apiRoutes": [
+    "/api/auth/logout",
+    "/api/cron/check-deadlines",
+    "/api/dashboard/stats",
+    "/api/extract",
+    "/api/gmail/check-now",
+    "/api/gmail/watch",
+    "/api/health",
+    "/api/receipts",
+    "/api/receipts/[id]",
+    "/api/receipts/[id]/attachments",
+    "/api/webhooks/gmail"
+  ],
+  "all": [
+    "/",
+    "/api/auth/logout",
+    "/api/cron/check-deadlines",
+    "/api/dashboard/stats",
+    "/api/extract",
+    "/api/gmail/check-now",
+    "/api/gmail/watch",
+    "/api/health",
+    "/api/receipts",
+    "/api/receipts/[id]",
+    "/api/receipts/[id]/attachments",
+    "/api/webhooks/gmail",
+    "/dashboard",
+    "/login",
+    "/profile",
+    "/settings",
+    "/signup",
+    "/test-extraction"
+  ]
+}

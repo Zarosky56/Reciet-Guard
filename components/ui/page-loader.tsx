@@ -1,68 +1,80 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { ReceiptText } from "lucide-react";
+import type { ReactNode } from "react";
 
+import { Loader } from "@/components/ui/loaders";
 import { cn } from "@/lib/utils/cn";
-import { premiumEase } from "@/components/motion/motion-primitives";
-import { ProcessRail } from "@/components/ui/loaders";
 
+/**
+ * Premium UI Redesign — `<PageLoader>` (task 5.11).
+ *
+ * A centered overlay used for full-page operations (sign-out is the
+ * primary call site today). The composition is intentionally calm:
+ *
+ *   - Scrim: `bg-canvas/70 backdrop-blur-sm` (≤ 8px blur per Requirement
+ *     5.4). The scrim is the only place backdrop-blur is allowed besides
+ *     `<Dialog>` and the global Toaster.
+ *   - Card: `bg-surface-overlay`, `border-border`, `rounded-lg`,
+ *     `shadow-overlay` — the single shadow token defined in the
+ *     redesigned tokens (Requirement 5.3).
+ *   - Indicator: the redesigned `<Loader size="md">` (a static accent
+ *     dot + label). The previous animated `ledger-scan` glyph and
+ *     `ProcessRail` are removed; the only allowed indeterminate loop in
+ *     the redesigned Motion_Language is `<RouteProgress>` (Requirement
+ *     6.8).
+ *
+ * Reduced-motion users see no animation here regardless — `<Loader>` is
+ * static by design (Requirement 6.6, 11.4).
+ *
+ * Prop signature is preserved for backwards compatibility with
+ * `dashboard-header.tsx` and `logout-section.tsx` (Requirement 8.9):
+ * `show`, `title`, and `description` are accepted; `title` becomes the
+ * loader label, `description` renders below.
+ */
 interface PageLoaderProps {
   show: boolean;
   title?: string;
-  description?: string;
+  description?: ReactNode;
+  className?: string;
 }
 
 export function PageLoader({
   show,
   title = "Loading",
   description = "One moment",
+  className,
 }: PageLoaderProps) {
+  if (!show) return null;
+
   return (
-    <AnimatePresence>
-      {show ? (
-        <motion.div
-          key="page-loader"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: premiumEase }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/80 pb-16 backdrop-blur-md md:pb-0"
-          aria-live="assertive"
-          role="status"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.35, ease: premiumEase, delay: 0.05 }}
-            className="flex w-full max-w-xs flex-col items-center gap-5 px-6"
-          >
-            <span
-              className={cn(
-                "relative flex size-14 items-center justify-center overflow-hidden rounded-2xl",
-                "border border-border bg-bg-elevated text-action shadow-inner-hair",
-              )}
-              aria-hidden="true"
-            >
-              <ReceiptText className="size-6" />
-              <span
-                className={cn(
-                  "absolute left-2 right-2 h-px bg-action shadow-[0_0_10px_rgba(91,140,255,0.7)]",
-                  "animate-ledger-scan",
-                )}
-              />
-            </span>
-
-            <div className="text-center">
-              <p className="text-sm font-medium text-text-primary">{title}</p>
-              <p className="mt-1 text-xs text-text-muted">{description}</p>
-            </div>
-
-            <ProcessRail className="w-full max-w-[180px]" />
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+    <div
+      role="status"
+      aria-live="assertive"
+      aria-busy="true"
+      className={cn(
+        // Scrim — full-screen, sits above page chrome and the mobile
+        // bottom nav (z-40), below toasts.
+        "fixed inset-0 z-50 flex items-center justify-center",
+        "bg-canvas/70 backdrop-blur-sm",
+        // Bottom padding clears the fixed mobile nav so the centered
+        // card optically aligns with the visible viewport, matching the
+        // previous behaviour.
+        "pb-16 md:pb-0",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "flex w-full max-w-auth flex-col items-center gap-3 px-6 py-5 text-center",
+          "rounded-lg border border-border bg-surface-overlay shadow-overlay",
+          "mx-6",
+        )}
+      >
+        <Loader size="md" label={title} />
+        {description ? (
+          <p className="text-xs text-text-muted">{description}</p>
+        ) : null}
+      </div>
+    </div>
   );
 }

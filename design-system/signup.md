@@ -1,176 +1,238 @@
 # Signup Page Design Specification
 
+> Premium UI Redesign — task 8.2 (`app/(auth)/signup/page.tsx`).
+> Validates Requirements 9.1, 9.3, 13.13.
+
 ## Purpose
-The signup page (`/signup`) is the conversion point where visitors become users. It must feel welcoming, trustworthy, and lightweight. The user is taking a chance on a new tool — the signup experience should reward that trust with simplicity and clarity. A single piece of critical context: "Use the same email you will forward receipts from."
+The signup page (`/signup`) is the conversion point where visitors become users. It must feel welcoming, trustworthy, and lightweight. The user is taking a chance on a new tool — the signup experience should reward that trust with simplicity and clarity. A single piece of critical context: "Use the same email you plan to forward receipts from."
 
 **User mindset:** New user, slightly hesitant, wants to understand what they're committing to before creating an account. Needs reassurance that this is low-friction and worth their email address.
+
+---
+
+## Redesigned composition (wireframe-level)
+
+The signup route is a thin wrapper around the shared `<AuthShell>` composition (`components/auth/auth-shell.tsx`). The shell renders a centered Card at `max-w-auth` with the `<BrandMark>` and wordmark stacked above. The `<AuthForm mode="signup">` (`components/auth/auth-form.tsx`) renders inside the card and supplies the only signup-specific copy.
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ <main> flex min-h-screen items-center justify-center px-6 py-12    │
+│                                                                    │
+│   ┌─ flex-col items-center, w-full max-w-auth ──────────────────┐ │
+│   │                                                              │ │
+│   │   <BrandMark size="md"> + "Receipt Guardian"                 │ │
+│   │     ── inline-flex gap-2, no tile, no halo, no border        │ │
+│   │     ── linked to "/", focus-visible outline only             │ │
+│   │                                                              │ │
+│   │   <Card className="w-full">                                  │ │
+│   │     <CardContent>                                            │ │
+│   │       ┌──────────────────────────────────────────────────┐   │ │
+│   │       │ H1  ── "Create your account"                     │   │ │
+│   │       │ p   ── "Use the same email you plan to forward   │   │ │
+│   │       │         receipts from."                           │   │ │
+│   │       │                                                  │   │ │
+│   │       │ <form grid gap-4>                                │   │ │
+│   │       │   ┌── Email     ──────────────────────────────┐  │   │ │
+│   │       │   │ <Input type="email" autocomplete="email">│  │   │ │
+│   │       │   └────────────────────────────────────────────┘  │   │ │
+│   │       │   ┌── Password  ──────────────────────────────┐  │   │ │
+│   │       │   │ <Input type="password"                   │  │   │ │
+│   │       │   │   autocomplete="new-password" minLength=6│  │   │ │
+│   │       │   └────────────────────────────────────────────┘  │   │ │
+│   │       │   <Button size="lg" w-full> "Create account" + → │   │ │
+│   │       └──────────────────────────────────────────────────┘   │ │
+│   │     </CardContent>                                            │ │
+│   │   </Card>                                                     │ │
+│   │                                                               │ │
+│   │   p ── "Already have an account?  Sign in →"                  │ │
+│   │                                                               │ │
+│   └────────────────────────────────────────────────────────────────┘
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Hero / main block prose
+
+The signup screen is the sibling of the login screen — same shell, same card geometry, same vertical rhythm. It opens with an H1 ("Create your account") at the title-md step, followed by the **critical** lede sentence: "Use the same email you plan to forward receipts from." The lede carries the most important guidance on the page; it pre-empts the #1 support issue (signing up with the wrong email). The form is a `grid gap-4` of two labeled `<Input>` fields (email, password with `autoComplete="new-password"` and `minLength={6}`) and a full-width `<Button size="lg">` whose label reads "Create account" idle and "Creating account" pending. The submit button renders an inline `<Loader size="sm" />` when pending. A footer paragraph beneath the card links to `/login`.
+
+**Shared with `/login`.** The `<AuthShell>` composition is identical between `/login` and `/signup`. The two routes differ **only** in heading copy, body copy, submit button label (idle + pending), and footer link target — all of which are carried by the `<AuthForm>` component via the `mode` prop (Requirement 9.3).
+
+**No ambient layer.** Authentication routes render on the bare canvas (Requirement 5.6, 13.10).
+
+**No entrance animation.** The shell renders statically (Requirement 6.2).
 
 ---
 
 ## Layout Structure
 
 ### Section Order
-1. **Centered card** — the only visible element, vertically and horizontally centered
-2. **Card header** — title ("Create your account") + contextual guidance subtext
-3. **Form fields** — email, password
-4. **Submit button** — full-width primary action
-5. **Footer link** — "Already have an account? Log in" → `/login`
+1. **`<BrandMark>` + wordmark** — stacked above the card
+2. **Centered card** — heading + form + inline footer-link paragraph
+3. **No nav, no header chrome** — auth routes do not render `<DashboardHeader>` or `<MobileBottomNav>`
 
 ### Spacing
 - Page wrapper: `flex min-h-screen items-center justify-center px-6 py-12`
-- Card: `w-full max-w-md`
-- Card internal: `p-6`
-- Header to form gap: `mb-6`
-- Form field gap: `gap-4` grid
-- Form to footer link: `mt-5`
-
-### Grids
-- Form uses single-column `grid gap-4`
-- No multi-column layouts
+- BrandMark → Card: `mb-6`
+- Card internal: `<CardContent>` standard `p-5`
+- Heading → form: `mb-6`
+- Form fields: `grid gap-4`
+- Form → footer link: `mt-6`
+- All values come from the spacing scale (Requirement 4.1, 4.2)
 
 ### Containers
-- Root: full viewport height, centered with flexbox
-- Card: `max-w-md` — prevents form from stretching too wide
-- No other containers
+- `<main>` is full-viewport flex centered; no max-width applied directly
+- Inner column: `max-w-auth` (= `--container-auth`, the documented auth container width per Requirement 4.4)
+- Card is `w-full` inside the column
 
 ### Responsive Adaptations
-- **Mobile (<640px):** Card fills width minus `px-6`, fields stack naturally
-- **Tablet/Desktop (640px+):** Card constrained to `max-w-md`, centered
-- **Ultrawide:** Card stays centered, background remains solid
+- **Mobile (< `sm`):** Card fills the column width minus `px-6` page padding; fields stack
+- **Tablet/Desktop (≥ `sm`):** Column constrained to `max-w-auth`, centered
+- **Ultrawide:** Column stays centered; canvas remains solid `bg-canvas`
 
 ---
 
 ## Visual Direction
 
 ### Aesthetic Tone
-Welcoming but professional. Same dark void + centered card pattern as login for consistency, but the copy is warmer and more instructive. The subtext carries the weight of guidance: "Use the same email you will forward receipts from."
+Welcoming but professional. Same dark canvas + centered card pattern as `/login` — the consistency between auth pages signals reliability and reduces cognitive overhead when switching between them.
 
 ### Visual Density
-Extremely low. Identical structure to login page for cognitive consistency. Users who navigate between login/signup should feel the pages are siblings, not strangers.
+Extremely low. Identical structure to login.
 
 ### Typography Emphasis
-- **Title:** `text-2xl font-semibold` — "Create your account" is action-oriented
-- **Subtext:** `text-sm leading-6 text-text-secondary` — carries critical instruction about email usage
-- **Labels:** `text-sm font-medium`
-- **Input text:** `text-sm`
-- **Footer link:** `text-sm text-text-secondary` with `text-action` link
+- **H1:** `text-2xl font-semibold tracking-tight` (title step), `text-text-primary`
+- **Lede:** `text-sm leading-6 text-text-secondary` — carries the critical email-matching guidance
+- **Field labels:** `text-sm font-medium text-text-primary`
+- **Input text:** inherits from `<Input>` primitive
+- **Submit button:** Button primitive at size `lg`
+- **Footer paragraph:** `text-sm text-text-secondary` with inline accent link (`text-accent`, hover → `text-accent-hover`)
 
 ### Use of Whitespace
-Identical to login page. The consistency between auth pages is intentional — it signals reliability and reduces cognitive overhead when switching between them.
+Identical to the login page. The consistency between auth pages is intentional.
 
 ### Visual Focus Points
 1. **Card** — the only illuminated element
-2. **Title** — confirms action
-3. **Subtext** — critical: "Use the same email you will forward receipts from"
-4. **Submit button** — "Sign up" call to action
-5. **Email field** — first input
+2. **H1 "Create your account"** — confirms the action
+3. **Lede** — critical guidance about email matching
+4. **Submit button** — full-width "Create account"
+5. **Email field** — first input, browser autosuggests saved emails
 
 ---
 
 ## Components
 
-### shadcn/ui Components Used
-- **Card** — form container
-- **Button** — `variant="default"` for submit, full-width
-- **Input** (native) — styled consistently with design system
-- **Link** (Next.js) — navigation to login
+### Components Used
+- `<AuthShell>` (`components/auth/auth-shell.tsx`)
+- `<BrandMark size="md" />` (`components/brand/brand-mark.tsx`)
+- `<Card>` + `<CardContent>` (`components/ui/card.tsx`)
+- `<Input>` (`components/ui/input.tsx`)
+- `<Button variant="primary" size="lg" className="w-full">`
+- `<Loader size="sm" />` (inline pending indicator)
+- `<Suspense>` — wraps `<AuthForm>` for `useSearchParams`
 
 ### Customization
-- Card uses `max-w-md`
-- Inputs use `h-11` (44px)
-- Password input: `minLength={6}`, `autoComplete="new-password"` — browser triggers password generation
-- Email input: `autoComplete="email"` — browser suggests saved emails
-- Submit button full-width
-- Link: `text-action hover:text-blue-300`
+- The submit button shows `<Loader size="sm" label="" />` adjacent to "Creating account" when pending
+- Email input: `autoComplete="email"`
+- Password input: `autoComplete="new-password"`, `minLength={6}` (browser will offer to generate a password)
+- `aria-busy={isSubmitting}` is set on the form during submission
+- Footer link uses `text-accent` and `--motion-quick` color hover
 
-### Minimal vs Dense
-**Absolute minimal.** Same philosophy as login. No password confirmation field (reduces friction — user can reset if they make a typo). No name field. No terms checkbox (implied by signup action).
+### Anti-pattern guardrails (do **not** reintroduce)
+- ❌ `bg-scene-auth` ambient background
+- ❌ `border-conic-soft` halo around any element
+- ❌ `<ReceiptText>`-in-a-tile mark
+- ❌ `<ActionLoader>` scan glyph during submit
+- ❌ `backdrop-blur-[1px]` on the card chrome
+- ❌ `<FadeIn>` page-level entrance animation
+- ❌ Password confirmation field
+- ❌ Password strength meter
+- ❌ Terms of Service checkbox
 
 ---
 
 ## Responsiveness
 
-### Mobile (<640px)
+### Mobile (< `sm`, < 640px)
 - Card fills available width
 - `min-h-screen` ensures vertical centering
-- Inputs at `h-11` for touch targets
+- Inputs at the standard primitive height (≥ 44px touch target per Requirement 11.6)
 - No horizontal scroll risk
 
-### Tablet (640-1024px)
-- Card at `max-w-md` (448px)
-- Generous surrounding dark space
+### Tablet (`sm` – `lg`, 640–1024px)
+- Column constrained to `max-w-auth`
+- Generous surrounding canvas
 
-### Desktop (1024px+)
-- Same as tablet — design stays focused, does not scale up
+### Desktop (`lg`, 1024px+)
+- Same as tablet — design stays focused
 
 ### Ultrawide
-- Card centered, background extends infinitely
+- Card centered, canvas extends infinitely
 
 ### Touch Ergonomics
-- All interactive elements >44px
+- All interactive elements meet the 44×44 CSS-pixel minimum
+- Submit button at `size="lg"`
 - `px-6` prevents edge contact
-- No closely spaced tappable elements
-- Password field triggers mobile keyboard with appropriate autocomplete
+- Password field triggers the appropriate mobile keyboard
 
 ---
 
 ## Motion
 
 ### Hover Effects
-- **Submit button:** `hover:brightness-110`
-- **Link:** `hover:text-blue-300`
-- **Inputs:** Border color transition on focus
+- **Submit button:** primary variant hover (no glow, no gradient)
+- **Footer link:** color shift from `text-accent` → `text-accent-hover` over `--motion-quick`
+- **Inputs:** border-color transition on hover/focus
 
 ### Transitions
-- CSS `transition` on interactive elements
+- All interactive elements use `duration-quick` or `duration-default` with `ease-standard`
 - No page-level transitions
-- `active:scale-[0.98]` on submit button
+- Reduced-motion users see no transition (global rule)
 
 ### Page Animations
-None. Static render with `Suspense` boundary for `useSearchParams`.
+None. Static render with `<Suspense>` boundary for `useSearchParams`.
 
 ### Loading Interactions
-- Submit button shows "Creating..." text during pending state
-- Button becomes `disabled` — prevents double-submit
-- No spinner for this short operation
+- Submit button shows "Creating account" text + inline `<Loader size="sm" />`
+- Button becomes `disabled`; form sets `aria-busy={true}`
+- Toast surfaces "Account created" success and error states
+- Successful signup pushes the user to `/dashboard` via `router.push(next)` and `router.refresh()`
 
 ### Modal Behavior
-No modals. Errors via `toast` (Sonner).
+None.
 
 ### Scroll Interactions
-None. Content fits within viewport.
+None.
 
 ---
 
 ## Premium UX Rules
 
 ### Reduce Cognitive Load
-- **Two fields only** — email and password, no confirmation
-- **Single clear title** — unambiguous action
-- **No name field** — not needed for core functionality, can be added later in settings
-- **No terms/privacy checkbox** — reduces friction, legal implied by action
-- **No CAPTCHA** — trust-first approach
+- Two fields only — email and password (no confirmation)
+- Single clear H1
+- No name field — captured later in `/profile` if needed
+- No terms / privacy checkbox — implied by signup action
+- No CAPTCHA on initial render
 
 ### Guide User Attention
-- Vertical flow: title → critical subtext → email → password → button → alternate action
-- Subtext is the most important element after the title — it prevents the #1 support issue (wrong email)
-- Full-width button creates clear action endpoint
+- Vertical flow: BrandMark → H1 → critical lede → email → password → button → footer link
+- The lede is the most important element after the H1 — it prevents the #1 support issue
+- Full-width button creates a clear action endpoint
 
 ### Luxury SaaS Feel
-- Consistent with login page — sibling pages, not distant relatives
-- Dark void + single card pattern signals security and focus
-- The instruction in subtext shows product thinking — "we've anticipated your question"
+- Consistent with login — sibling pages
+- Dark canvas + single card pattern signals security and focus
+- The lede shows product thinking — "we've anticipated your question"
 
 ### Visual Calmness
-- No password strength meter (reduces visual noise, avoids judgment)
-- No "password requirements" list (minLength is enforced by browser validation)
-- No email verification status indicator
+- No password strength meter
+- No password requirements list visually rendered (browser enforces `minLength={6}`)
+- No email verification status indicator on the form
 
 ### Polished Interactions
 - Toast notifications for errors and success
-- "Account created" success toast before redirect
-- Email redirect to `/auth/callback` for verification (Supabase magic)
-- Redirect to dashboard on success — immediate value delivery
+- Email confirmation redirect to `/auth/callback` is handled by Supabase
+- Redirect to `/dashboard` on success — immediate value delivery
 
 ---
 
@@ -180,18 +242,16 @@ None. Content fits within viewport.
 - ❌ Add a password confirmation field
 - ❌ Include a "Full name" field
 - ❌ Add a "Terms of Service" checkbox
-- ❌ Show password strength meter
+- ❌ Show a password strength meter
 - ❌ List password requirements visually
 - ❌ Add social signup buttons
-- ❌ Include a "Sign up with Google" option
-- ❌ Show a "Why create an account?" explainer section
-- ❌ Add testimonials near the form
+- ❌ Reintroduce the `<ReceiptText>`-in-a-tile mark
+- ❌ Use `bg-scene-auth` or any ambient background on the auth route
+- ❌ Render an `<ActionLoader>` scan glyph during submit
 - ❌ Use a multi-step signup wizard
 - ❌ Add an "I'm not a robot" CAPTCHA
 - ❌ Show email verification instructions on the signup page itself
-- ❌ Add a "Back to home" link that competes with the form
-- ❌ Use different card styling from login page
-- ❌ Add decorative background elements
+- ❌ Use different card styling from the login page
 
 ---
 

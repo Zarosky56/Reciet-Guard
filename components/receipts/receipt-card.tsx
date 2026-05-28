@@ -1,20 +1,49 @@
 "use client";
 
-import { CalendarClock, DollarSign, Edit3, Store, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  ChevronDown,
+  Edit3,
+  Store,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 
-import { HoverLift } from "@/components/motion/motion-primitives";
+import { UrgencyBadge } from "@/components/receipts/urgency-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CardActionLoader } from "@/components/ui/loaders";
-import { UrgencyBadge } from "@/components/receipts/urgency-badge";
+import { Loader } from "@/components/ui/loaders";
 import { cn } from "@/lib/utils/cn";
 import type { ReceiptStatus, ReceiptWithUrgency } from "@/types/receipt";
+
+/**
+ * Premium UI Redesign — `<ReceiptCard>` (task 8.4).
+ *
+ * Implements the documented data-card pattern (`COMPONENT_PATTERNS.md`
+ * §3 → "Pattern: Data Card (Receipt)"):
+ *
+ *   - `<Card data-interactive={true}>` — opts into the redesigned hover
+ *     lift (-translate-y-0.5 + border-border-strong, transform-only,
+ *     `--motion-default`). No glow shadow, no `bg-card-elevated`
+ *     overlay (Requirement 6.5, 8.1, 8.4).
+ *   - The urgency badge is absolute-positioned in the top-right corner
+ *     so the title group flows independently. The title group is
+ *     padded-right (`pr-24`) to clear the badge.
+ *   - Status chip uses the redesigned `<Badge>` primitive — no
+ *     `bg-action/10`-style inline opacity (Requirement 2.6).
+ *   - Pending state renders the redesigned `<Loader size="sm">` (the
+ *     single coherent loading vocabulary, Requirement 6.8, 8.6).
+ *   - Action row uses `<Button variant="secondary">` and
+ *     `<Button variant="danger">`; no glow on either.
+ *
+ * Implements: Requirements 6.4, 6.5, 8.1, 8.2, 8.4, 11.7, 13.5.
+ */
 
 interface ReceiptCardProps {
   receipt: ReceiptWithUrgency;
   isPending?: boolean;
   pendingAction?: "status" | "delete" | null;
-  pulseUrgency?: boolean;
   onEdit: (receipt: ReceiptWithUrgency) => void;
   onDelete: (receipt: ReceiptWithUrgency) => void;
   onStatusChange: (receipt: ReceiptWithUrgency, status: ReceiptStatus) => void;
@@ -63,125 +92,138 @@ export function ReceiptCard({
   receipt,
   isPending = false,
   pendingAction = null,
-  pulseUrgency = false,
   onEdit,
   onDelete,
   onStatusChange,
 }: ReceiptCardProps) {
+  const [statusOpen, setStatusOpen] = useState(false);
+
   return (
-    <HoverLift lift={2} className="h-full">
-      <Card data-interactive="true" className="group/card h-full">
-        <CardContent className="relative flex h-full flex-col p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-xs text-text-muted">
-              <Store className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">
-                {receipt.store_name ?? "Unknown store"}
-              </span>
-            </div>
-            <UrgencyBadge
-              urgency={receipt.urgency}
-              daysRemaining={receipt.days_remaining}
-              status={receipt.status}
-              pulse={pulseUrgency}
-            />
-          </div>
+    <Card data-interactive={true} className="h-full">
+      <CardContent className="relative flex h-full flex-col">
+        {/* Absolute-positioned urgency badge (data-card pattern). The
+            title group reserves right padding to clear the badge. */}
+        <div className="pointer-events-none absolute right-5 top-5">
+          <UrgencyBadge
+            urgency={receipt.urgency}
+            daysRemaining={receipt.days_remaining}
+            status={receipt.status}
+          />
+        </div>
 
-          <h3 className="mt-3 line-clamp-2 text-[15px] font-medium leading-snug text-text-primary">
-            {receipt.item_name ?? "Unnamed item"}
-          </h3>
+        {/* Store row */}
+        <div className="flex min-w-0 items-center gap-2 pr-24 text-xs text-text-muted">
+          <Store className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">
+            {receipt.store_name ?? "Unknown store"}
+          </span>
+        </div>
 
-          <div className="mt-4 flex items-baseline gap-2">
-            <DollarSign
-              className="size-4 text-text-muted"
+        {/* Item title */}
+        <h3 className="mt-2 line-clamp-1 pr-24 text-base font-medium leading-snug text-text-primary">
+          {receipt.item_name ?? "Unnamed item"}
+        </h3>
+
+        {/* Price */}
+        <p className="mt-2 font-mono text-base font-semibold tabular-nums text-text-primary">
+          {formatMoney(receipt.price, receipt.currency)}
+        </p>
+
+        {/* Dates */}
+        <div className="mt-3 flex items-center gap-4 text-xs text-text-muted">
+          <span className="tabular-nums">
+            {formatDate(receipt.purchase_date)}
+          </span>
+          <span className="flex items-center gap-1 tabular-nums">
+            <CalendarClock className="size-3" aria-hidden="true" />
+            {formatDate(receipt.return_deadline)}
+          </span>
+        </div>
+
+        {/* Current status chip + change toggle */}
+        <div className="mt-4 flex items-center gap-2">
+          <Badge>
+            <span className="capitalize">{receipt.status}</span>
+          </Badge>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusOpen((open) => !open)}
+            aria-label="Change status"
+            aria-expanded={statusOpen}
+            className="px-2"
+          >
+            <ChevronDown
+              data-icon
               aria-hidden="true"
+              className={cn(
+                "transition-transform duration-default ease-standard",
+                statusOpen && "rotate-180",
+              )}
             />
-            <span className="font-mono text-lg font-semibold text-text-primary tabular-nums">
-              {formatMoney(receipt.price, receipt.currency)}
-            </span>
-          </div>
+          </Button>
+        </div>
 
-          <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-border/70 bg-bg-elevated/50 p-3 text-xs">
-            <div>
-              <dt className="text-[10px] uppercase tracking-wider text-text-muted">
-                Purchased
-              </dt>
-              <dd className="mt-1 font-mono text-[12px] text-text-primary tabular-nums">
-                {formatDate(receipt.purchase_date)}
-              </dd>
-            </div>
-            <div>
-              <dt className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-text-muted">
-                <CalendarClock
-                  className="size-3 shrink-0"
-                  aria-hidden="true"
-                />
-                Return by
-              </dt>
-              <dd className="mt-1 font-mono text-[12px] text-text-primary tabular-nums">
-                {formatDate(receipt.return_deadline)}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-5 flex flex-wrap items-center gap-1.5">
-            {STATUSES.map((status) => (
-              <button
+        {/* Status options */}
+        {statusOpen ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {STATUSES.filter((s) => s !== receipt.status).map((status) => (
+              <Button
                 key={status}
                 type="button"
-                onClick={() => onStatusChange(receipt, status)}
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  onStatusChange(receipt, status);
+                  setStatusOpen(false);
+                }}
                 disabled={isPending}
-                aria-pressed={receipt.status === status}
-                className={cn(
-                  "rounded-md border px-2 py-1 text-[11px] font-medium capitalize tracking-wide transition-all duration-150",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus",
-                  "disabled:pointer-events-none disabled:opacity-50",
-                  receipt.status === status
-                    ? "border-action/40 bg-action/10 text-action shadow-inner-hair"
-                    : "border-border bg-bg-elevated text-text-secondary hover:border-border-strong hover:text-text-primary",
-                )}
+                className="capitalize"
               >
                 {status}
-              </button>
+              </Button>
             ))}
           </div>
+        ) : null}
 
-          {pendingAction ? (
-            <CardActionLoader
-              variant={pendingAction === "delete" ? "delete" : "update"}
-              label={
-                pendingAction === "delete"
-                  ? "Removing receipt"
-                  : "Updating status"
-              }
-            />
-          ) : null}
+        {pendingAction ? (
+          <Loader
+            size="sm"
+            label={
+              pendingAction === "delete"
+                ? "Removing receipt"
+                : "Updating status"
+            }
+            className="mt-3"
+          />
+        ) : null}
 
-          <div className="mt-4 flex items-center gap-2 border-t border-border/70 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => onEdit(receipt)}
-              disabled={isPending}
-              className="flex-1"
-            >
-              <Edit3 data-icon aria-hidden="true" />
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={() => onDelete(receipt)}
-              disabled={isPending}
-              aria-label="Delete receipt"
-            >
-              <Trash2 data-icon aria-hidden="true" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </HoverLift>
+        {/* Action row */}
+        <div className="mt-auto flex items-center gap-2 border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => onEdit(receipt)}
+            disabled={isPending}
+            className="flex-1"
+          >
+            <Edit3 data-icon aria-hidden="true" />
+            Edit
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            onClick={() => onDelete(receipt)}
+            disabled={isPending}
+            aria-label="Delete receipt"
+          >
+            <Trash2 data-icon aria-hidden="true" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

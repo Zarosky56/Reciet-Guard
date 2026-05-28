@@ -10,20 +10,36 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Redesigned tokens (Phase 1) — back tokens defined in app/globals.css ──
+        canvas: "var(--color-canvas)",
+        "canvas-raised": "var(--color-canvas-raised)",
+        surface: "var(--color-surface)",
+        "surface-hover": "var(--color-surface-hover)",
+        "surface-overlay": "var(--color-surface-overlay)",
+        border: {
+          DEFAULT: "var(--color-border)",
+          strong: "var(--color-border-strong)",
+          focus: "var(--color-border-focus)",
+        },
+        text: {
+          primary: "var(--color-text-primary)",
+          secondary: "var(--color-text-secondary)",
+          muted: "var(--color-text-muted)",
+        },
+        accent: {
+          DEFAULT: "var(--color-accent)",
+          hover: "var(--color-accent-hover)",
+          tint: "var(--color-accent-tint)",
+        },
+        success: "var(--color-success)",
+        warning: "var(--color-warning)",
+        danger: "var(--color-danger)",
+        info: "var(--color-info)",
+
+        // ── Deprecated palette (removed in task 11) ──
         bg: "#08080C",
         "bg-elevated": "#0D0D14",
-        surface: "#14141B",
-        "surface-hover": "#1E1E28",
         "surface-elevated": "#1A1A23",
-        border: "#2A2A3A",
-        "border-strong": "#353548",
-        "border-focus": "#3B3B50",
-        "text-primary": "#ECECF1",
-        "text-secondary": "#A0A0B8",
-        "text-muted": "#6B6B80",
-        success: "#10B981",
-        warning: "#F59E0B",
-        danger: "#EF4444",
         action: "#5B8CFF",
         "action-strong": "#3B82F6",
         "action-soft": "rgba(91, 140, 255, 0.12)",
@@ -34,21 +50,43 @@ const config: Config = {
         mono: ["var(--font-jetbrains)", "JetBrains Mono", "monospace"],
       },
       borderRadius: {
+        // Redesigned radius scale (Phase 1)
+        xs: "var(--radius-xs)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        pill: "var(--radius-pill)",
+        // Deprecated (removed in task 11)
         card: "14px",
         "card-lg": "18px",
         xl2: "20px",
       },
+      maxWidth: {
+        auth: "var(--container-auth)",
+        narrow: "var(--container-narrow)",
+        content: "var(--container-content)",
+        wide: "var(--container-wide)",
+      },
+      transitionDuration: {
+        instant: "var(--motion-instant)",
+        quick: "var(--motion-quick)",
+        default: "var(--motion-default)",
+        slow: "var(--motion-slow)",
+      },
+      transitionTimingFunction: {
+        standard: "var(--ease-standard)",
+        emphasized: "var(--ease-emphasized)",
+        linear: "var(--ease-linear)",
+      },
       boxShadow: {
-        toast: "0 4px 12px rgba(0, 0, 0, 0.3)",
-        "card-sm":
-          "0 1px 0 rgba(255,255,255,0.02) inset, 0 1px 2px rgba(0,0,0,0.3)",
-        "card-lift":
-          "0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -18px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.35)",
-        "glow-action":
-          "0 0 0 1px rgba(91,140,255,0.35), 0 12px 40px -10px rgba(91,140,255,0.45)",
-        "glow-soft":
-          "0 0 0 1px rgba(91,140,255,0.18), 0 20px 60px -20px rgba(91,140,255,0.25)",
-        "inner-hair": "inset 0 1px 0 rgba(255,255,255,0.04)",
+        // Redesigned overlay shadow (Phase 1) — the ONLY allowed shadow
+        // token per Requirement 5.3. Backed by `--shadow-overlay`
+        // defined in `app/globals.css`. The deprecated
+        // `shadow-card-sm`, `shadow-card-lift`, `shadow-glow-action`,
+        // `shadow-glow-soft`, `shadow-inner-hair`, and `shadow-toast`
+        // tokens were removed in task 11.2 (Requirements 5.2, 5.3,
+        // 8.6, 14.4) — Toaster now uses `shadow-overlay` directly.
+        overlay: "var(--shadow-overlay)",
       },
       backgroundImage: {
         "grid-faint":
@@ -61,46 +99,27 @@ const config: Config = {
           "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 40%)",
       },
       keyframes: {
-        "pulse-red": {
-          "0%, 100%": { opacity: "0.72" },
-          "50%": { opacity: "1" },
+        // Redesigned keyframes (Phase 1). The deprecated
+        // `ledger-scan`, `loader-rail`, `loader-step`, `glow-pulse`,
+        // `shimmer`, `fade-in-up`, and `pulse-red` keyframes were
+        // removed in task 11.2 (Requirements 5.2, 6.7, 8.6, 14.4).
+        attention: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.7" },
         },
-        shimmer: {
+        "route-progress": {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
-        "glow-pulse": {
-          "0%, 100%": { opacity: "0.6" },
-          "50%": { opacity: "1" },
-        },
-        "fade-in-up": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "ledger-scan": {
-          "0%": { opacity: "0", transform: "translateY(-14px)" },
-          "18%": { opacity: "1" },
-          "74%": { opacity: "1" },
-          "100%": { opacity: "0", transform: "translateY(24px)" },
-        },
-        "loader-rail": {
-          "0%": { opacity: "0", transform: "translateX(-110%)" },
-          "24%": { opacity: "0.9" },
-          "100%": { opacity: "0", transform: "translateX(220%)" },
-        },
-        "loader-step": {
-          "0%, 100%": { opacity: "0.32", transform: "scale(0.82)" },
-          "46%": { opacity: "1", transform: "scale(1)" },
-        },
       },
       animation: {
-        "pulse-red": "pulse-red 3s ease-in-out infinite",
-        shimmer: "shimmer 1.8s linear infinite",
-        "glow-pulse": "glow-pulse 3.2s ease-in-out infinite",
-        "fade-in-up": "fade-in-up 400ms ease-out both",
-        "ledger-scan": "ledger-scan 1.45s cubic-bezier(0.22, 1, 0.36, 1) infinite",
-        "loader-rail": "loader-rail 1.9s cubic-bezier(0.22, 1, 0.36, 1) infinite",
-        "loader-step": "loader-step 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite",
+        // Redesigned animations (Phase 1). Deprecated animation
+        // utilities (`animate-ledger-scan`, `animate-loader-rail`,
+        // `animate-loader-step`, `animate-glow-pulse`,
+        // `animate-shimmer`, `animate-fade-in-up`, `animate-pulse-red`)
+        // were removed in task 11.2.
+        attention: "attention 2.4s var(--ease-emphasized) infinite",
+        "route-progress": "route-progress 1.2s linear infinite",
       },
     },
   },

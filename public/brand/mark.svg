@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+  <!--
+    Receipt Guardian brand mark — slab-serif "R".
+    Path 1: Bowl + stem L-shape (4..17 across the top, 4..8 down the stem) with
+            a rectangular counter (8..14, 6..9) punched out via even-odd.
+    Path 2: Slab leg parallelogram, flush with the stem at the junction.
+    No tile, no halo, no gradient — fill follows currentColor.
+  -->
+  <path d="M4 3 H17 V10 H15 V11 H8 V21 H4 Z M8 6 H14 V9 H8 Z" />
+  <path d="M8 11 H12 L19 21 H15 Z" />
+</svg>

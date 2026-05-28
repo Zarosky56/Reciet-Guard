@@ -40,6 +40,19 @@ export function mapReceipt(row: ReceiptRow): ReceiptWithUrgency {
     notification_sent_7d: boolOrFalse(row.notification_sent_7d),
     notification_sent_3d: boolOrFalse(row.notification_sent_3d),
     notification_sent_1d: boolOrFalse(row.notification_sent_1d),
+    product_brand: stringOrNull(row.product_brand),
+    product_model: stringOrNull(row.product_model),
+    serial_number: stringOrNull(row.serial_number),
+    category: stringOrNull(row.category),
+    warranty_period_months: numberOrNull(row.warranty_period_months),
+    extraction_provider:
+      row.extraction_provider === "document_ai" ||
+      row.extraction_provider === "gemini" ||
+      row.extraction_provider === "groq" ||
+      row.extraction_provider === "manual"
+        ? row.extraction_provider
+        : null,
+    notes: stringOrNull(row.notes),
     created_at:
       stringOrNull(row.created_at) ?? new Date().toISOString(),
     updated_at:

@@ -1,8 +1,10 @@
 # REFERENCES.md — Quick-Reference Lookup Tables & Decision Trees
 
-> **Role:** This document is a rapid-access reference for implementation decisions. It consolidates tokens, patterns, and rules from across the design system into scannable lookup tables. Use this when you know *what* you need but want to quickly confirm *which value* to use.
+> **Role:** This document is a rapid-access reference for implementation decisions. It consolidates the redesigned tokens, patterns, and rules from across the design system into scannable lookup tables. Use this when you know *what* you need but want to quickly confirm *which value* to use.
 
-> **Authority:** This file is a mirror of rules defined elsewhere. If REFERENCES.md conflicts with DESIGN.md or IMPLEMENTATION.md, the source document wins. This file is updated to reflect changes in source documents.
+> **Authority:** This file is a mirror of rules defined elsewhere. If `REFERENCES.md` conflicts with `DESIGN.md`, `VISUAL_IDENTITY.md`, or `IMPLEMENTATION.md`, the source document wins. This file is updated to reflect changes in source documents.
+
+> **Scope:** All values below mirror `app/globals.css` `:root` and `tailwind.config.ts` exactly. Both files are authoritative; this file restates them for quick lookup. If you spot a mismatch, update the source files first, then this table.
 
 ---
 
@@ -10,70 +12,106 @@
 
 ### Colors (Copy-Paste Ready)
 
-| Purpose | Tailwind Class | Hex |
-|---|---|---|
-| Page background | `bg-bg` | #0A0A0F |
-| Card/container background | `bg-surface` | #14141B |
-| Hover background | `bg-surface-hover` | #1E1E28 |
-| Default border | `border-border` | #2A2A3A |
-| Focus/hover border | `border-border-focus` | #3B3B50 |
-| Primary text | `text-text-primary` | #E8E8ED |
-| Secondary text | `text-text-secondary` | #A0A0B8 |
-| Muted/tertiary text | `text-text-muted` | #6B6B80 |
-| Action/accent (blue) | `bg-action` / `text-action` | #3B82F6 |
-| Success (green) | `text-success` | #10B981 |
-| Warning (amber) | `text-warning` | #F59E0B |
-| Danger (red) | `text-danger` | #EF4444 |
+All redesigned colors are defined in `oklch()` on `:root` in `app/globals.css` and mirrored as Tailwind theme colors via `var(--color-…)` in `tailwind.config.ts`. There is no raw-hex equivalent — the `oklch` value is the source of truth. Approximate hex columns are for visual reference only; **do not** paste them into source files (lint rule `no-raw-color` will reject them outside `app/globals.css`, `tailwind.config.ts`, and `public/**` SVGs).
+
+| Purpose | Tailwind class | CSS variable | oklch | ≈ hex |
+|---|---|---|---|---|
+| Page background | `bg-canvas` | `--color-canvas` | `oklch(0.13 0.005 270)` | `#0B0B10` |
+| Tonal band (hero / sticky header) | `bg-canvas-raised` | `--color-canvas-raised` | `oklch(0.16 0.006 270)` | `#13131A` |
+| Card / dialog / header chrome | `bg-surface` | `--color-surface` | `oklch(0.19 0.007 270)` | `#1B1B22` |
+| Card hover, button hover | `bg-surface-hover` | `--color-surface-hover` | `oklch(0.22 0.008 270)` | `#22222C` |
+| Dialog content (above scrim) | `bg-surface-overlay` | `--color-surface-overlay` | `oklch(0.21 0.008 270)` | `#1F1F28` |
+| Default 1px border | `border-border` | `--color-border` | `oklch(0.27 0.009 270)` | `#2C2C38` |
+| Hover border / divider | `border-border-strong` | `--color-border-strong` | `oklch(0.34 0.010 270)` | `#3A3A48` |
+| Focus ring (= accent) | `border-border-focus` | `--color-border-focus` | `oklch(0.78 0.13 78)` | `#D9A24C` |
+| Body, headline, label | `text-text-primary` | `--color-text-primary` | `oklch(0.96 0.005 90)` | `#F1EFE9` |
+| Description, metadata | `text-text-secondary` | `--color-text-secondary` | `oklch(0.74 0.012 90)` | `#B5B0A4` |
+| Tertiary / placeholder | `text-text-muted` | `--color-text-muted` | `oklch(0.55 0.012 90)` | `#7E7A6F` |
+| Primary CTA, link, focus, active nav | `bg-accent` / `text-accent` | `--color-accent` | `oklch(0.78 0.13 78)` | `#D9A24C` |
+| Accent hover/active | `bg-accent-hover` | `--color-accent-hover` | `oklch(0.83 0.13 78)` | `#E5B05A` |
+| Tinted-accent background (selected, badge) | `bg-accent-tint` | `--color-accent-tint` | `oklch(0.30 0.06 78)` | `#3F2F18` |
+| Positive status | `text-success` | `--color-success` | `oklch(0.72 0.16 150)` | `#3FB97A` |
+| Caution, "due soon" | `text-warning` | `--color-warning` | `oklch(0.78 0.15 70)` | `#D69544` |
+| Destructive, expired | `text-danger` | `--color-danger` | `oklch(0.65 0.20 25)` | `#D95A4D` |
+| Optional info (rarely used) | `text-info` | `--color-info` | `oklch(0.72 0.08 230)` | `#7AA0C2` |
+
+**Banned:** `indigo-*`, `violet-*`, `blue-*`/`#3B82F6`, `#5B8CFF`, and any inline `bg-accent/10` opacity expression. Use `bg-accent-tint` for tinted accent fills (Requirement 2.6, 13.1).
 
 ### Typography (Copy-Paste Ready)
 
-| Level | Classes |
-|---|---|
-| Hero headline | `text-4xl md:text-6xl font-bold leading-[1.05]` |
-| Page title | `text-2xl md:text-3xl font-semibold` |
-| Section title | `text-xl font-semibold` |
-| Subsection/card title | `text-base font-medium` |
-| Body text | `text-sm leading-6` |
-| Body large (landing) | `text-base md:text-lg leading-7` |
-| Label | `text-sm font-medium` |
-| Caption/metadata | `text-xs` |
-| Stat value | `font-mono text-xl font-semibold` |
-| Code/JSON | `font-mono text-xs leading-5` |
-| Stat label (uppercase) | `text-xs uppercase text-text-muted` |
+Two families only, both via `next/font`:
+
+| Family | CSS variable | Tailwind | Source |
+|---|---|---|---|
+| UI sans-serif | `--font-ui` | `font-sans` | Geist Sans (Google) — Latin subset, regular preloaded |
+| Mono / tabular | `--font-mono` | `font-mono` | JetBrains Mono — Latin subset, no preload |
+
+OpenType features applied globally on `body`: `"cv11", "ss03", "tnum"` (Geist features re-mapped from the Inter set; documented in `DESIGN.md`).
+
+The type scale is defined as nine `--text-*` CSS variables in `app/globals.css`. Compose UI text by reaching for the named scale step, **not** by hand-picking Tailwind size + leading utilities.
+
+| Step | CSS variable (size / line / tracking / weight) | ≈ Tailwind composition | Usage |
+|---|---|---|---|
+| `--text-caption` | `0.75rem` / `1rem` / `0.04em` / `500` | `text-xs uppercase tracking-wide font-medium` | Stat labels, badges |
+| `--text-meta` | `0.8125rem` / `1.125rem` / `0` / `400` | `text-[13px] leading-[18px]` *(scale layer only)* | Metadata, footnotes |
+| `--text-body` | `0.875rem` / `1.5rem` / `0` / `400` | `text-sm leading-6` | Body, descriptions |
+| `--text-body-lg` | `1rem` / `1.625rem` / `0` / `400` | `text-base leading-7` | Long-form body |
+| `--text-label` | `0.875rem` / `1.25rem` / `0` / `500` | `text-sm leading-5 font-medium` | Form labels |
+| `--text-title-sm` | `1rem` / `1.375rem` / `-0.005em` / `500` | `text-base font-medium` | Card titles |
+| `--text-title-md` | `1.25rem` / `1.625rem` / `-0.01em` / `600` | `text-xl font-semibold` | Section titles |
+| `--text-title-lg` | `1.5rem` / `1.875rem` / `-0.015em` / `600` | `text-2xl font-semibold` | Page titles (`<h1>`) |
+| `--text-display` | `2.625rem` → `3.75rem` @ md+ / `1.05` / `-0.03em` / `600` | `text-[2.625rem] md:text-[3.75rem]` *(scale layer only)* | Landing hero only |
+
+**Banned:** arbitrary `text-[NN]` / `leading-[NN]` outside `components/ui/typography.tsx` and `components/ui/grid.tsx` (lint rule `no-arbitrary-spacing`). `bg-clip-text` gradient text is forbidden on every In_Scope_Screen (Requirement 3.7, 13.3).
+
+**Tabular numerals:** `font-mono` ships `"tnum"` globally; on `font-sans`, opt in via the `.tnum` utility for stat values (Requirement 3.6).
+
+**Hero rule:** when rendered size > 32px, `--text-display` already applies `letter-spacing: -0.03em` and the heading SHALL set `text-wrap: balance` with a max-line count of 2 (Requirement 3.8).
 
 ### Spacing (Copy-Paste Ready)
 
-| Context | Value |
-|---|---|
-| Between icon and text | `gap-2` |
-| Between nav buttons | `gap-3` |
-| Between cards in grid | `gap-4` |
-| Between form fields | `gap-4` |
-| Between major sections | `gap-6` |
-| Between page-level sections | `gap-8` |
-| Page horizontal padding | `px-6 md:px-8` |
-| Page vertical padding | `py-8` |
-| Hero vertical padding | `py-14 md:py-20` |
-| Compact card padding | `p-4` |
-| Standard card padding | `p-5` |
-| Generous card padding | `p-6` |
+Base unit 4px. Allowed steps: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 (= Tailwind `1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24`). Arbitrary values forbidden by `no-arbitrary-spacing`.
+
+| Context | Tailwind | Pixels |
+|---|---|---|
+| Label-to-input gap | `gap-2` | 8 |
+| Icon-to-text gap | `gap-2` | 8 |
+| Form-row gap (between fields in a row) | `gap-4` | 16 |
+| Card-internal gap | `gap-4` | 16 |
+| Subsection gap (within a section) | `gap-6` | 24 |
+| Section gap (between top-level sections) | `gap-8` | 32 |
+| Card padding (standard) | `p-5` | 20 |
+| Page horizontal padding | `px-6 md:px-8` | 24 / 32 |
+| Page vertical padding | `py-8` | 32 |
+
+`CardHeader` / `CardContent` / `CardFooter` are standardized at `p-5` everywhere. `p-4` and `p-6` Card variants from the legacy system are not part of the redesigned spec.
 
 ### Container Widths
 
-| Page Type | Width | Tailwind |
-|---|---|---|
-| Auth forms | 448px | `max-w-md` |
-| Profile | 672px | `max-w-2xl` |
-| Settings, test extraction | 896px | `max-w-4xl` |
-| Dashboard, landing | 1152px | `max-w-6xl` |
+Four named container tokens, each a width utility under `theme.extend.maxWidth`:
+
+| Page type | Tailwind | Token | Pixels |
+|---|---|---|---|
+| Login, Signup | `max-w-auth` | `--container-auth` | 416 |
+| Profile | `max-w-narrow` | `--container-narrow` | 672 |
+| Settings, Test Extraction | `max-w-content` | `--container-content` | 896 |
+| Landing, Dashboard | `max-w-wide` | `--container-wide` | 1152 |
+
+Every In_Scope_Screen `<main>` SHALL use exactly one of these (Requirement 4.4).
 
 ### Border Radius
 
-| Element | Value | Tailwind |
-|---|---|---|
-| Cards, dialogs, modals | 12px | `rounded-card` |
-| Buttons, inputs, selects | 8px | `rounded-lg` |
-| Badges, small pills | 6px | `rounded-md` |
+Five-step radius scale defined as `--radius-*` CSS variables and mirrored to Tailwind:
+
+| Tailwind | CSS variable | Pixels | Used by |
+|---|---|---|---|
+| `rounded-xs` | `--radius-xs` | 4 | Badge |
+| `rounded-sm` | `--radius-sm` | 6 | Input, Textarea, Button (sm) |
+| `rounded-md` | `--radius-md` | 10 | Button (default / lg) |
+| `rounded-lg` | `--radius-lg` | 14 | Card, Dialog, PageLoader scrim |
+| `rounded-pill` | `--radius-pill` | 999 | Avatar, status indicator dot |
+
+The legacy `rounded-card` / `rounded-card-lg` / `rounded-xl2` aliases are removed.
 
 ---
 
@@ -82,80 +120,56 @@
 ### "Which Button variant do I use?"
 ```
 Is it the primary action on the page?
-├── Yes → variant="default" (blue, filled)
-│    └── Is it a hero/auth CTA? → size="lg"
-│    └── Is it a standard action? → size="default"
+├── Yes → variant="primary" (amber accent fill on canvas-dark text)
+│    └── Hero / auth CTA → size="lg"
+│    └── Standard action → size="default"
 └── No →
-     Is it a secondary/supporting action?
-     ├── Yes → variant="secondary" (bordered)
-     │    └── Is it compact? → size="sm"
+     Is it a secondary / supporting action?
+     ├── Yes → variant="secondary" (bordered, surface fill)
+     │    └── Compact → size="sm"
      └── No →
-          Is it a tertiary/navigation action?
-          ├── Yes → variant="ghost" (text only)
-          │    └── Is it in a nav? → size="default"
-          │    └── Is it in a card? → size="sm"
+          Is it a tertiary / nav action with no resting chrome?
+          ├── Yes → variant="ghost" (text-only)
+          │    └── In a nav → size="default"
+          │    └── In a card → size="sm"
           └── No →
-               Is it destructive?
-               └── Yes → variant="danger" (red bordered)
-                    └── Always size="sm"
+               Is it destructive (delete / sign-out)?
+               └── Yes → variant="danger" (danger border + danger text)
+                    └── Default size="sm"
 ```
+
+The CVA `default` variant remains as a backward-compat alias for `primary` only during migration; new code SHALL use `primary` (deleted in task 11.3, see `COMPONENT_PATTERNS.md` migration notes).
 
 ### "Which Card padding do I use?"
 ```
-Is it a stat card (label + number)?
-├── Yes → p-4
-└── No →
-     Is it a content-rich card (form, description, actions)?
-     ├── Yes → p-5
-     └── No →
-          Is it an auth card or profile section?
-          └── Yes → p-6
+All Card subparts (CardHeader / CardContent / CardFooter) → p-5
 ```
+Padding is uniform. Density variations now flow through inner gap tokens (`gap-2`, `gap-4`, `gap-6`), not through outer padding.
 
 ### "Which container width do I use?"
 ```
-Is it an auth page (login/signup)?
-├── Yes → max-w-md (centered card)
-└── No →
-     Is it a profile/personal page?
-     ├── Yes → max-w-2xl
-     └── No →
-          Is it a form-focused page (settings, test extraction)?
-          ├── Yes → max-w-4xl
-          └── No →
-               Is it a data-dense page (dashboard, landing)?
-               └── Yes → max-w-6xl
+Auth (login / signup)            → max-w-auth     (416px)
+Profile                          → max-w-narrow   (672px)
+Settings / Test Extraction       → max-w-content  (896px)
+Dashboard / Landing              → max-w-wide     (1152px)
 ```
 
 ### "Which text color do I use?"
 ```
-Is it a headline, title, or primary content?
-├── Yes → text-text-primary
-└── No →
-     Is it a description, subtitle, or supporting text?
-     ├── Yes → text-text-secondary
-     └── No →
-          Is it a placeholder, label caption, or tertiary info?
-          ├── Yes → text-text-muted
-          └── No →
-               Is it an interactive/action element?
-               ├── Yes → text-action (blue)
-               └── No →
-                    Is it a status indicator?
-                    └── Yes → text-success / text-warning / text-danger
+Headline, title, primary content        → text-text-primary
+Description, metadata, secondary copy   → text-text-secondary
+Placeholder, caption, tertiary info     → text-text-muted
+Interactive accent (link, active nav)   → text-accent
+Status indicator                        → text-success / text-warning / text-danger
 ```
+There is no `text-info` consumer in production; the token is reserved for future opt-in surfaces.
 
 ### "Should this be a Server or Client Component?"
 ```
-Does it use hooks (useState, useEffect, useTransition)?
-├── Yes → Client Component ("use client")
-└── No →
-     Does it have event handlers (onClick, onChange)?
-     ├── Yes → Client Component
-     └── No →
-          Does it use browser APIs (clipboard, window)?
-          ├── Yes → Client Component
-          └── No → Server Component (default, no directive needed)
+Uses hooks (useState, useEffect, useTransition)?  → "use client"
+Has event handlers (onClick, onChange)?           → "use client"
+Uses browser APIs (clipboard, window)?            → "use client"
+Otherwise                                         → Server Component (default)
 ```
 
 ---
@@ -166,26 +180,27 @@ Does it use hooks (useState, useEffect, useTransition)?
 
 | Page | Container | Layout | Sections |
 |---|---|---|---|
-| Landing | `max-w-6xl` | Flex column, hero centered | Nav, Hero, Proof grid |
-| Login | Full viewport | Flex center | Single card |
-| Signup | Full viewport | Flex center | Single card |
-| Dashboard | `max-w-6xl` | Grid gap-6 | Header, Stats, Input, Receipts |
-| Test extraction | `max-w-4xl` | Grid gap-4 | Header, Input card, Result card |
-| Settings | `max-w-4xl` | Grid (sidebar + content) | Nav sidebar, Settings sections |
-| Profile | `max-w-2xl` | Grid gap-8 | Avatar, Identity, Activity |
+| Landing (`/`) | `max-w-wide` | Flex column, hero centered | Nav, hero, 3-card proof grid |
+| Login (`/login`) | `max-w-auth` | Centered AuthShell card | Brand row, heading, form, footer link |
+| Signup (`/signup`) | `max-w-auth` | Centered AuthShell card | Brand row, heading, form, footer link |
+| Dashboard (`/dashboard`) | `max-w-wide` | Grid `gap-8` | Header, hero card (summary + intake), search + filters, receipt grid |
+| Test extraction (`/test-extraction`) | `max-w-content` | Grid `gap-6` | Header, input card, JSON output card |
+| Settings (`/settings`) | `max-w-content` | Single-column stacked sections | Header, settings sections, logout |
+| Profile (`/profile`) | `max-w-narrow` | Single-column stacked sections | Header, identity, activity |
 
 ### Responsive Breakpoint Behavior
 
-| Element | Mobile (<640) | Tablet (640-1024) | Desktop (1024+) |
+| Element | Mobile (<640) | Tablet (640–1024) | Desktop (1024+) |
 |---|---|---|---|
 | Receipt grid | 1 col | 2 col | 3 col |
 | Stats row | Stacked | Stacked | Side-by-side |
-| Input section | Stacked | Stacked | Side-by-side |
-| Form fields | 1 col | 1 col | 2 col |
+| Dashboard hero card | Stacked | Stacked | Two-column inside one card |
+| Form fields | 1 col | 1 col | 2 col where the spec allows |
 | Hero CTAs | Stacked | Inline | Inline |
 | Dashboard header | Stacked | Horizontal | Horizontal |
 | Proof points | 1 col | 3 col | 3 col |
-| Section headers | Stacked | Horizontal | Horizontal |
+
+Container widths are clamped via `max-w-*`; ultrawide viewports center content over a solid `bg-canvas`.
 
 ---
 
@@ -193,91 +208,138 @@ Does it use hooks (useState, useEffect, useTransition)?
 
 ### Button States (All Variants)
 
-| State | Default (Blue) | Secondary | Ghost | Danger |
+| State | `primary` | `secondary` | `ghost` | `danger` |
 |---|---|---|---|---|
-| Default | `bg-action text-white` | `border bg-surface` | `text-text-secondary` | `border-red bg-red/10` |
-| Hover | `brightness-110` | `bg-surface-hover` | `text-text-primary` | `bg-red/15` |
-| Focus | `outline-border-focus` | `outline-border-focus` | `outline-border-focus` | `outline-border-focus` |
-| Active | `scale-[0.98]` | `scale-[0.98]` | `scale-[0.98]` | `scale-[0.98]` |
-| Disabled | `opacity-50` | `opacity-50` | `opacity-50` | `opacity-50` |
+| Resting | `bg-accent text-canvas` | `bg-surface border-border text-text-primary` | `text-text-secondary` | `bg-surface border-danger/40 text-danger` |
+| Hover | `bg-accent-hover` | `bg-surface-hover border-border-strong` | `bg-surface-hover text-text-primary` | `bg-danger/10 border-danger` |
+| Focus-visible | `outline-2 outline-offset-2 outline-border-focus` | same | same | same |
+| Active | `scale-[0.985]` (`duration-instant`) | same scale | same scale | same scale |
+| Disabled | `opacity-50 cursor-not-allowed` | same | same | same |
 
-### Input States
+The previous gradient `before:` overlay, `shadow-glow-action` halo, and `bg-[linear-gradient(...)]` fills are deleted (Requirement 8.3).
+
+### Input / Textarea States
 
 | State | Appearance |
 |---|---|
-| Default | `border-border bg-bg` |
-| Focus | `border-border-focus` (transition) |
-| Filled | Same as default (no visual change) |
-| Disabled | `opacity-50 pointer-events-none` |
+| Resting | `bg-canvas border-border rounded-sm` |
+| Hover | `border-border-strong` |
+| Focus | `border-border-focus` + 1px outline at 1px offset (no 4px shadow halo) |
+| Filled | Identical to resting |
+| Disabled | `opacity-50 cursor-not-allowed` |
+| Invalid | `border-danger` via `aria-invalid="true"` or `data-invalid="true"` |
 | Placeholder | `text-text-muted` |
 
 ### Card States
 
 | State | Appearance |
 |---|---|
-| Default | `border-border bg-surface` |
-| Hover | `-translate-y-0.5 border-border-focus` (200ms) |
-| Non-interactive | Remove hover classes |
+| Resting (all) | `bg-surface border-border rounded-lg` (no shadow) |
+| Hover (interactive) | `border-border-strong -translate-y-0.5` (`duration-default ease-standard`) |
+| Hover (non-interactive) | No change |
+| Focused (interactive, keyboard) | `outline-2 outline-offset-2 outline-border-focus` |
+
+Resting cards never carry shadows. Only overlays (Dialog, PageLoader scrim, Toaster) consume `shadow-overlay` (Requirement 5.2, 5.3).
 
 ---
 
 ## 5. Animation Reference
 
-### Allowed Animations
+Motion tokens defined as CSS variables on `:root` and mirrored into `theme.extend.transitionDuration` / `transitionTimingFunction` / `keyframes`.
 
-| Animation | Trigger | Duration | Properties | Limit |
-|---|---|---|---|---|
-| Button press | `:active` | Instant | `scale(0.98)` | All buttons |
-| Card hover lift | `:hover` | 200ms | `translateY(-2px)` | Interactive cards only |
-| Focus ring | `:focus-visible` | 150ms | `outline` | All interactive elements |
-| Red pulse | Always (critical) | 3000ms | `opacity 0.72↔1` | ONE per page |
-| Spinner | During async | Continuous | `rotate` | During loading only |
-| Border transition | `:focus` | 150ms | `border-color` | All inputs |
+### Duration tokens
 
-### Forbidden Animations
-- Page enter/exit transitions
+| Token | Tailwind | Value | Usage |
+|---|---|---|---|
+| `--motion-instant` | `duration-instant` | 80ms | Press feedback (`active:scale-[0.985]`) |
+| `--motion-quick` | `duration-quick` | 150ms | Button hover, link color shift |
+| `--motion-default` | `duration-default` | 220ms | Card hover lift, focus border, dialog open |
+| `--motion-slow` | `duration-slow` | 360ms | Dialog content slide-in |
+
+### Easing tokens
+
+| Token | Tailwind | Value | Usage |
+|---|---|---|---|
+| `--ease-standard` | `ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` | Default UI transitions |
+| `--ease-emphasized` | `ease-emphasized` | `cubic-bezier(0.3, 0, 0.1, 1)` | Dialog open, attention pulse |
+| `--ease-linear` | `ease-linear` | `linear` | Indeterminate progress only |
+
+### Allowed keyframes
+
+| Keyframe | Tailwind | Trigger | Limit |
+|---|---|---|---|
+| `attention` | `animate-attention` | Single critical urgency badge per screen, only on expired-red | One screen at a time |
+| `route-progress` | `animate-route-progress` | Active during Next.js route transition | One global instance |
+
+These two are the **only** keyframes defined under `theme.extend.keyframes`. The legacy `ledger-scan`, `loader-rail`, `loader-step`, `glow-pulse`, `shimmer`, `fade-in-up`, and `pulse-red` keyframes were deleted in task 11.2.
+
+### Allowed transitions
+
+Only `transform`, `opacity`, `border-color`, `color`, and `background-color` may be transitioned. Transitions on `width`, `height`, `top`, `left`, `margin`, `padding`, `box-shadow`, `filter`, or `background` are forbidden in user-facing components (Requirement 6.5).
+
+### Forbidden animations
+- Page-level enter / exit transitions
+- Stagger / fade-up reveal on lists, hero, or proof grids (Requirement 6.3, 13.8)
 - Scroll-triggered reveals
-- Parallax effects
-- Stagger animations
-- Bounce/spring easing
-- Scale on hover (except button active)
-- Fade-in on mount
-- Slide-in from sides
-- Counter/number animations
+- Parallax / scroll-linked transforms
+- Bounce / spring / overshoot easing
+- Hover scale on cards or images (button `active:scale-[0.985]` is the only allowed scale)
+- Counter / number tween animations
+- Gradient or filter animations of any kind
+
+Reduced-motion users see no active animation: indeterminate loops opt into a static variant via `data-reduced-motion="static"` (Requirement 6.6, 11.4).
 
 ---
 
-## 6. Icon Reference
+## 6. Iconography Reference
+
+**Strategy:** keep `lucide-react` for utility icons, with a single stroke width and a curated allow-list. The Brand_Mark is **not** a Lucide icon — it ships as a custom SVG at `public/brand/mark.svg` (Requirement 1.4, 1.5, 7.1).
 
 ### Icon Sizing
 
-| Context | Size Class |
+| Token | Tailwind | Pixels | Usage |
+|---|---|---|---|
+| `icon-xs` | `h-3 w-3` | 12 | Inside Badge |
+| `icon-sm` | `h-3.5 w-3.5` | 14 | Inline with body text |
+| `icon-md` | `h-4 w-4` | 16 | Inside Button (default) |
+| `icon-lg` | `h-5 w-5` | 20 | Standalone in card or nav |
+
+### Stroke width
+
+A single value globally: **`strokeWidth={1.75}`**. Mixing stroke widths within a screen is forbidden (Requirement 7.2).
+
+### Allow-listed icons
+
+The redesign keeps a curated subset. New icon imports SHALL be added to this allow-list before use; the list is the source of truth for `<BrandMark>` and Lucide consumers.
+
+| Icon | Used by |
 |---|---|
-| Inside button (with text) | `h-4 w-4` |
-| Standalone in card | `h-5 w-5` |
-| Inside badge | `h-3.5 w-3.5` |
-| Empty state focal | `h-10 w-10` |
-| Logo in nav | `h-5 w-5` |
+| `ArrowRight` | Landing CTA cue, dashboard "open editor" |
+| `Search` | Dashboard search input |
+| `Inbox` | Dashboard intake address row |
+| `MailSearch` | AI extraction action |
+| `Plus` | Add receipt action |
+| `Edit3` | Receipt-card edit |
+| `Trash2` | Receipt-card delete, settings danger row |
+| `Clock` | Receipt due-date metadata |
+| `DollarSign` | Receipt amount metadata |
+| `X` | Dialog close |
+| `Copy` | Copy forwarding-address action |
+| `Check` | Copy success feedback, success badges |
+| `AlertTriangle` | Warning urgency badge |
+| `AlertOctagon` | Expired urgency badge |
+| `LogOut` | Settings logout row |
+| `Mail` | Profile email row |
+| `User` | Profile identity row |
+| `Settings` | Mobile bottom nav |
+| `LayoutGrid` | Mobile bottom nav (dashboard) |
+| `UserCircle` | Mobile bottom nav (profile) |
+| `Loader2` | Reserved — **do not import**; the redesigned `<Loader>` is the only loading vocabulary |
+| `ReceiptText` | Reserved — **do not import**; the Brand_Mark SVG replaces it |
 
-### Common Icons Used
+### Decorative-tile ban
 
-| Icon | Import | Usage |
-|---|---|---|
-| `ArrowRight` | lucide-react | CTA directional cue |
-| `MailCheck` | lucide-react | Email/forwarding feature |
-| `ReceiptText` | lucide-react | Receipt/extraction feature |
-| `ShieldCheck` | lucide-react | Security/control feature |
-| `Search` | lucide-react | Search input icon |
-| `Inbox` | lucide-react | Check inbox action |
-| `MailSearch` | lucide-react | Extract email action |
-| `Plus` | lucide-react | Add/create indicator |
-| `Edit3` | lucide-react | Edit action |
-| `Trash2` | lucide-react | Delete action |
-| `Clock` | lucide-react | Date/time metadata |
-| `DollarSign` | lucide-react | Price/money metadata |
-| `Loader2` | lucide-react | Loading spinner |
-| `X` | lucide-react | Close/dismiss |
-| `Copy` / `Check` | lucide-react | Copy action feedback |
+Icons are not wrapped in conic-bordered, glow-ringed, or gradient tiles. The only exception is the Brand_Mark SVG, which itself ships without a tile (Requirement 7.4).
 
 ---
 
@@ -287,23 +349,39 @@ Does it use hooks (useState, useEffect, useTransition)?
 
 ```
 components/
-├── ui/                    # Atomic UI components (shadcn/ui style)
-│   ├── button.tsx         # Button with CVA variants
-│   ├── card.tsx           # Card, CardHeader, CardContent, CardFooter
-│   ├── badge.tsx          # Badge (generic)
-│   ├── input.tsx          # Input + Textarea
-│   └── dialog.tsx         # Modal dialog
-├── auth/                  # Auth-specific components
-│   └── auth-form.tsx      # Shared login/signup form
-├── dashboard/             # Dashboard-specific components
-│   └── dashboard-header.tsx
-├── receipts/              # Receipt-specific components
-│   ├── receipt-dashboard.tsx  # Main dashboard orchestrator
-│   ├── receipt-card.tsx       # Individual receipt card
+├── ui/                       # Atomic primitives (shadcn-style)
+│   ├── button.tsx            # 4 variants × 4 sizes (CVA)
+│   ├── card.tsx              # Card / Header / Content / Footer (uniform p-5)
+│   ├── badge.tsx             # default / success / warning / danger
+│   ├── input.tsx             # Input + Textarea
+│   ├── dialog.tsx            # Radix dialog with framer-motion <Reveal>
+│   ├── avatar.tsx            # rounded-pill, no decorative tile
+│   ├── skeleton.tsx          # static fill, no shimmer
+│   ├── grid.tsx              # <Grid cols={1|2|3} gap="card"|"section">
+│   ├── loaders.tsx           # single <Loader label size> primitive
+│   ├── page-loader.tsx       # centered Card overlay + Loader
+│   └── route-progress.tsx    # 2px top-of-page bar (the one allowed indeterminate loop)
+├── motion/
+│   └── motion-primitives.tsx # <Reveal> only (transform/opacity)
+├── brand/
+│   └── brand-mark.tsx        # consumes public/brand/mark.svg
+├── visual/
+│   └── ambient-background.tsx # variant: "hero" | "off"
+├── auth/
+│   ├── auth-form.tsx
+│   └── auth-shell.tsx
+├── dashboard/
+│   ├── dashboard-header.tsx
+│   └── mobile-bottom-nav.tsx
+├── receipts/
+│   ├── receipt-dashboard.tsx
+│   ├── receipt-card.tsx
 │   ├── receipt-empty-state.tsx
 │   ├── copy-forwarding-address.tsx
 │   └── urgency-badge.tsx
-└── ai/                    # AI/extraction components
+├── settings/
+│   └── logout-section.tsx
+└── ai/
     └── test-extraction-form.tsx
 ```
 
@@ -311,25 +389,29 @@ components/
 
 ```
 app/
-├── page.tsx               # Landing (/)
-├── layout.tsx             # Root layout (fonts, toaster)
-├── globals.css            # CSS variables, Tailwind, resets
-├── (auth)/                # Auth route group
-│   ├── login/page.tsx     # /login
-│   └── signup/page.tsx    # /signup
-├── (dashboard)/           # Dashboard route group
-│   └── dashboard/page.tsx # /dashboard
-├── test-extraction/       # /test-extraction
-│   └── page.tsx
-├── auth/callback/         # Auth callback (Supabase)
-│   └── route.ts
-└── api/                   # API routes
-    ├── receipts/          # CRUD
-    ├── extract/           # AI extraction
-    ├── gmail/             # Gmail integration
-    ├── dashboard/stats/   # Stats endpoint
-    └── health/            # Health check
+├── page.tsx                   # Landing (/)
+├── layout.tsx                 # Root layout (Geist + JetBrains Mono, Toaster)
+├── globals.css                # Token authority (CSS variables)
+├── (auth)/
+│   ├── login/page.tsx         # /login
+│   └── signup/page.tsx        # /signup
+├── (dashboard)/
+│   ├── dashboard/page.tsx     # /dashboard
+│   ├── profile/page.tsx       # /profile
+│   └── settings/page.tsx      # /settings
+├── test-extraction/page.tsx   # /test-extraction
+├── auth/callback/route.ts     # Supabase auth callback
+└── api/                       # All routes preserved (Requirement 14.1)
+    ├── receipts/
+    ├── extract/
+    ├── gmail/
+    ├── dashboard/stats/
+    ├── auth/logout/
+    ├── cron/check-deadlines/
+    └── health/
 ```
+
+The route inventory is snapshot-locked at `design-system/__tests__/route-inventory.snapshot.json` and verified by `route-inventory.property.test.ts`.
 
 ---
 
@@ -337,35 +419,34 @@ app/
 
 ### Page Shell (Data Page)
 ```tsx
-<main className="mx-auto min-h-screen w-full max-w-6xl px-6 md:px-8">
+<main className="mx-auto min-h-screen w-full max-w-wide px-6 md:px-8">
   {/* header */}
-  {/* content sections */}
+  {/* sections */}
 </main>
 ```
 
 ### Page Shell (Auth Page)
 ```tsx
 <main className="flex min-h-screen items-center justify-center px-6 py-12">
-  <Card className="w-full max-w-md">
-    {/* form */}
-  </Card>
+  <AuthShell>{/* form */}</AuthShell>
 </main>
 ```
 
 ### Section with Title
 ```tsx
-<section className="grid gap-4">
-  <h2 className="text-xl font-semibold text-text-primary">Title</h2>
+<section className="grid gap-6">
+  <h2 className="text-xl font-semibold tracking-[-0.01em] text-text-primary">Title</h2>
   {/* content */}
 </section>
 ```
 
-### Responsive Grid
+### Responsive Grid (via Grid primitive)
 ```tsx
-<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  {/* items */}
-</div>
+<Grid cols={3} gap="card">
+  {items.map((item) => <Card key={item.id}>{/* ... */}</Card>)}
+</Grid>
 ```
+Direct `grid grid-cols-[Xfr_Yrem]` declarations are forbidden in page components (Requirement 4.5).
 
 ### Form Field
 ```tsx
@@ -379,51 +460,52 @@ app/
 ```tsx
 <div className="flex justify-end gap-2">
   <Button variant="ghost">Cancel</Button>
-  <Button>Submit</Button>
+  <Button variant="primary">Submit</Button>
 </div>
 ```
 
 ### Loading Button
 ```tsx
-<Button disabled={isPending}>
-  {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Icon className="h-4 w-4" aria-hidden="true" />}
-  {isPending ? "Saving..." : "Save"}
+<Button variant="primary" disabled={isPending}>
+  {isPending ? <Loader size="sm" label="Saving" /> : "Save"}
 </Button>
 ```
+The Lucide `Loader2` spinner is forbidden; use the redesigned `<Loader>` (single static dot + label).
 
 ---
 
 ## 9. Checklist: Before You Ship
 
 ```
-□ All colors are Tailwind tokens (no hex)
-□ All spacing from the documented scale
-□ Typography matches the type scale exactly
-□ Container width matches page type
-□ Responsive at 375px, 768px, 1280px
-□ All buttons have hover + focus + active + disabled
-□ All inputs have focus border transition
-□ Icons are h-4 w-4 (in buttons) or h-5 w-5 (standalone)
-□ Only one animation on the page (if any)
-□ No gradients, no shadows (except toast), no blur
-□ Semantic HTML (main, nav, section, h1-h3)
-□ aria-hidden on decorative icons
-□ Touch targets ≥44px
-□ Toast for all mutations
-□ Loading state for all async operations
-□ Empty state for empty lists
-□ No console errors
-□ No TypeScript errors
-□ Matches sibling pages in quality and consistency
+□ Container width matches the page type (auth / narrow / content / wide)
+□ Every color resolves to a redesigned token; no raw hex / rgb / hsl / oklch literal
+□ Every spacing value is on the spacing scale (no `p-7`, no `gap-[13px]`)
+□ Every text element maps to exactly one type-scale step
+□ Buttons use one of 4 variants × 4 sizes; no gradient fills
+□ Cards use uniform p-5 with no resting shadow
+□ Inputs/Textareas use border-color focus + 1px outline (no 4px shadow halo)
+□ Icons are lucide-react, strokeWidth 1.75, from the allow-list
+□ Brand_Mark uses the SVG asset, never a Lucide icon in a tile
+□ At most one decorative element per screen (Requirement 13.13, 13.14)
+□ At most one indeterminate animation visible (RouteProgress OR a single attention pulse)
+□ Reduced-motion: every animation gracefully degrades (data-reduced-motion="static")
+□ Focus-visible includes a non-color signal (thickness, offset, or shape change)
+□ Touch targets ≥ 44×44 CSS pixels
+□ Semantic HTML (<main>, <nav>, single <h1>, <section>)
+□ Status / urgency / error indicators combine color with text or icon
+□ No console errors, no TypeScript errors, lint passes with `--max-warnings=0`
+□ Property tests: `npm run sadtest` green for the touched files
+□ Bundle budget: `node scripts/check-bundle-size.mjs` green
 ```
 
 ---
 
 ## Document Maintenance
 
-This file is a derived reference. Update it when source documents change:
-- Color tokens change → update §1 Colors
-- Typography scale changes → update §1 Typography
-- New component added → update §2 Decision Tree
-- New page added → update §3 Page Architecture
-- New icon used → update §6 Icon Reference
+This file is a derived reference. Update it whenever the source files change:
+- Color tokens change in `app/globals.css` / `tailwind.config.ts` → update §1 Colors.
+- Type-scale steps change → update §1 Typography.
+- A new component primitive appears → update §2 Decision Tree and §7 File Structure.
+- A new In_Scope_Screen ships → update §3 Page Architecture.
+- The Lucide allow-list changes → update §6 Iconography.
+- A new motion duration / easing token lands → update §5 Animation.

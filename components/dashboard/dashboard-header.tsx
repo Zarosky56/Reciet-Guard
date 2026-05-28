@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, ReceiptText } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useState } from "react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
-import { ButtonLoader } from "@/components/ui/loaders";
+import { Loader } from "@/components/ui/loaders";
 import { PageLoader } from "@/components/ui/page-loader";
 import { cn } from "@/lib/utils/cn";
 import { MobileBottomNav } from "@/components/dashboard/mobile-bottom-nav";
@@ -49,19 +50,14 @@ export function DashboardHeader({
         title="Signing out"
         description="Ending session securely"
       />
-      <header className="sticky top-0 z-30 -mx-6 border-b border-border/70 bg-bg/75 px-6 backdrop-blur-xl md:-mx-8 md:px-8">
+      <header className="sticky top-0 z-30 -mx-4 border-b border-border bg-canvas-raised px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4">
           <Link
             href="/dashboard"
-            className="group flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+            className="group flex min-w-0 items-center gap-2 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
             aria-label="Receipt Guardian dashboard"
           >
-            <span
-              className="border-conic-soft relative flex size-9 items-center justify-center rounded-xl border border-border bg-surface text-action shadow-inner-hair"
-              aria-hidden="true"
-            >
-              <ReceiptText className="size-[18px]" />
-            </span>
+            <BrandMark size="md" className="text-accent" />
             <span className="min-w-0">
               <span className="block text-[15px] font-semibold tracking-tight text-text-primary">
                 Receipt Guardian
@@ -76,7 +72,7 @@ export function DashboardHeader({
 
           <nav
             aria-label="Main"
-            className="hidden items-center rounded-xl border border-border bg-surface/70 p-1 shadow-inner-hair md:flex"
+            className="hidden items-center rounded-md border border-border-strong bg-surface p-1 md:flex"
           >
             {navItems.map((item) => {
               const isActive = current === item.key;
@@ -86,9 +82,9 @@ export function DashboardHeader({
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "relative inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium transition-colors duration-200",
+                    "relative inline-flex h-8 items-center rounded-sm px-3 text-[13px] font-medium transition-colors duration-default ease-standard",
                     isActive
-                      ? "bg-bg-elevated text-text-primary shadow-inner-hair"
+                      ? "bg-accent-tint text-text-primary"
                       : "text-text-secondary hover:text-text-primary",
                   )}
                 >
@@ -109,7 +105,7 @@ export function DashboardHeader({
             >
               {loggingOut ? (
                 <>
-                  <ButtonLoader variant="logout" />
+                  <Loader size="sm" label="" />
                   Signing out
                 </>
               ) : (

@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, ReceiptText } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { FadeIn } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ActionLoader, ButtonLoader } from "@/components/ui/loaders";
+import { Loader } from "@/components/ui/loaders";
 
 type AuthMode = "login" | "signup";
 
@@ -18,6 +16,27 @@ interface AuthFormProps {
   mode: AuthMode;
 }
 
+/**
+ * Premium UI Redesign — `<AuthForm>` (task 8.2).
+ *
+ * The form rendered inside `<AuthShell>`. Login and Signup share this
+ * component and differ only in: heading copy, body copy, submit button
+ * label (idle + pending), and footer link target.
+ *
+ * Anti-AI-slop clauses honoured (Requirement 9.3, 13):
+ *   - Removed the `<ReceiptText>`-in-a-tile mark with `border-conic-soft`
+ *     halo and `shadow-inner-hair` highlight. The brand mark moved to
+ *     `<AuthShell>` and renders via the typographic `<BrandMark>` SVG.
+ *   - Removed the `<FadeIn>` page-level entrance animation.
+ *   - Removed `backdrop-blur-[1px]` on the card chrome.
+ *   - Removed the `<ActionLoader>` scan-glyph that rendered below the
+ *     submit button during pending — the redesigned vocabulary uses a
+ *     single static `<Loader size="sm" />` inside the button.
+ *   - Removed the `text-action` accent from the footer link in favor
+ *     of the redesigned `text-accent` token.
+ *
+ * Implements Requirements 9.3, 13.13.
+ */
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,108 +82,72 @@ export function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === "signup";
 
   return (
-    <FadeIn className="w-full max-w-md" duration={0.5}>
-      <div className="mb-8 flex flex-col items-center text-center">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
-          aria-label="Receipt Guardian home"
-        >
-          <span
-            className="border-conic-soft relative flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-action shadow-inner-hair"
-            aria-hidden="true"
-          >
-            <ReceiptText className="size-[18px]" />
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight text-text-primary">
-            Receipt Guardian
-          </span>
-        </Link>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold leading-tight tracking-[-0.015em] text-text-primary">
+          {isSignup ? "Create your account" : "Welcome back"}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">
+          {isSignup
+            ? "Use the same email you plan to forward receipts from."
+            : "Sign in to open your dashboard."}
+        </p>
       </div>
 
-      <Card className="backdrop-blur-[1px]">
-        <CardContent className="p-7">
-          <div className="mb-6">
-            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.015em] text-text-primary">
-              {isSignup ? "Create your account" : "Welcome back"}
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">
-              {isSignup
-                ? "Use the same email you plan to forward receipts from."
-                : "Sign in to open your quiet deadline dashboard."}
-            </p>
-          </div>
-
-          <form onSubmit={onSubmit} className="grid gap-4" aria-busy={isSubmitting}>
-            <label className="grid gap-2 text-sm font-medium text-text-primary">
-              Email
-              <Input
-                required
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                className="h-11"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium text-text-primary">
-              Password
-              <Input
-                required
-                minLength={6}
-                type="password"
-                autoComplete={isSignup ? "new-password" : "current-password"}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 6 characters"
-                className="h-11"
-              />
-            </label>
-            <Button
-              type="submit"
-              size="lg"
-              className="mt-2 w-full"
-              disabled={isSubmitting}
-              data-loading={isSubmitting ? "true" : undefined}
-            >
-              {isSubmitting ? (
-                <>
-                  <ButtonLoader variant="auth" />
-                  {isSignup ? "Creating account" : "Signing in securely"}
-                </>
-              ) : (
-                <>
-                  {isSignup ? "Create account" : "Sign in"}
-                  <ArrowRight data-icon aria-hidden="true" />
-                </>
-              )}
-            </Button>
-            {isSubmitting ? (
-              <ActionLoader
-                variant="auth"
-                compact
-                title={isSignup ? "Creating your account" : "Verifying your account"}
-                description={
-                  isSignup
-                    ? "Email, account, dashboard"
-                    : "Account, session, dashboard"
-                }
-              />
-            ) : null}
-          </form>
-        </CardContent>
-      </Card>
+      <form onSubmit={onSubmit} className="grid gap-4" aria-busy={isSubmitting}>
+        <label className="grid gap-2 text-sm font-medium text-text-primary">
+          Email
+          <Input
+            required
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-medium text-text-primary">
+          Password
+          <Input
+            required
+            minLength={6}
+            type="password"
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="At least 6 characters"
+          />
+        </label>
+        <Button
+          type="submit"
+          size="lg"
+          className="mt-2 w-full"
+          disabled={isSubmitting}
+          data-loading={isSubmitting ? "true" : undefined}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader size="sm" label="" />
+              {isSignup ? "Creating account" : "Signing in"}
+            </>
+          ) : (
+            <>
+              {isSignup ? "Create account" : "Sign in"}
+              <ArrowRight data-icon aria-hidden="true" />
+            </>
+          )}
+        </Button>
+      </form>
 
       <p className="mt-6 text-center text-sm text-text-secondary">
         {isSignup ? "Already have an account?" : "New here?"}{" "}
         <Link
           href={isSignup ? "/login" : "/signup"}
-          className="rounded-md font-medium text-action transition-colors hover:text-[#8db0ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+          className="rounded-sm font-medium text-accent transition-colors duration-quick ease-standard hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
         >
           {isSignup ? "Sign in" : "Create an account"}
         </Link>
       </p>
-    </FadeIn>
+    </div>
   );
 }

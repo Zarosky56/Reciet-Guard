@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
-import { premiumEase } from "@/components/motion/motion-primitives";
+import { Reveal } from "@/components/motion/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
@@ -16,6 +16,43 @@ interface DialogProps {
   className?: string;
 }
 
+/**
+ * `<Dialog>` — overlay primitive (Phase 2 redesign, task 5.10).
+ *
+ * Surface treatment (Requirement 5.3, 8.1, 8.2):
+ *   - Panel uses the overlay elevation: `bg-surface-overlay`,
+ *     `border-border`, `rounded-lg`, and the single allowed shadow
+ *     token `shadow-overlay`. Resting cards have no shadow; the
+ *     overlay shadow is reserved for this primitive and the toaster.
+ *   - Scrim is `bg-canvas/70 backdrop-blur-sm` per Requirement 5.4.
+ *     Tailwind's `backdrop-blur-sm` is 4px, well under the 8px ceiling.
+ *
+ * Motion (Requirement 6.5, 8.1):
+ *   - The panel's open/close animation is delegated to the canonical
+ *     `<Reveal>` primitive (transform/opacity only, `--motion-default`
+ *     duration, `--ease-standard` ease). The `exit` motion prop is
+ *     forwarded through `<Reveal>`'s `HTMLMotionProps<"div">` spread
+ *     so `<AnimatePresence>` animates the panel out on close.
+ *   - The scrim animates opacity only via `motion.div`. Per the design
+ *     doc, `Dialog` is the only retained framer-motion consumer in
+ *     `components/ui/*`; every other primitive drives motion through
+ *     `<Reveal>` or pure CSS transitions.
+ *   - Reduced-motion users are honoured: `<Reveal>` short-circuits to
+ *     a plain motion component without animation props, and the global
+ *     `prefers-reduced-motion` media query in `app/globals.css`
+ *     clamps CSS transitions to 0.01ms.
+ *
+ * Accessibility:
+ *   - `role="dialog"` + `aria-modal="true"` + `aria-labelledby` on the
+ *     `<h2>` title.
+ *   - First focusable element receives focus on open; focus is trapped
+ *     inside the panel; previous focus is restored on close.
+ *   - `Escape` closes the dialog. `mousedown` on the scrim closes;
+ *     `mousedown` on the panel does not propagate to the scrim handler.
+ *
+ * Prop signature is preserved from the pre-redesign Dialog so consumer
+ * pages do not need to change (Requirement 8.9, 14.7).
+ */
 export function Dialog({
   open,
   title,
@@ -75,50 +112,51 @@ export function Dialog({
     <AnimatePresence>
       {open ? (
         <motion.div
-          key="dialog-backdrop"
+          key="dialog-scrim"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-6"
+          transition={{ duration: 0.22, ease: [0.2, 0, 0, 1] }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-canvas/70 backdrop-blur-sm sm:items-center sm:p-6"
           role="presentation"
           onMouseDown={onClose}
         >
-          <motion.section
-            ref={dialogRef}
+          <Reveal
             key="dialog-panel"
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ duration: 0.28, ease: premiumEase }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className={cn(
-              "w-full max-w-lg overflow-hidden rounded-t-card-lg border border-border bg-surface text-text-primary shadow-card-lift sm:rounded-card-lg",
-              className,
-            )}
-            onMouseDown={(event) => event.stopPropagation()}
+            exit={{ opacity: 0, y: 8 }}
+            className="w-full max-w-lg"
           >
-            <div className="flex items-center justify-between gap-4 border-b border-border bg-surface/95 px-5 py-4 backdrop-blur">
-              <h2
-                id={titleId}
-                className="text-[15px] font-semibold tracking-tight text-text-primary"
-              >
-                {title}
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                aria-label="Close dialog"
-              >
-                <X data-icon aria-hidden="true" />
-              </Button>
-            </div>
-            <div className="px-5 py-5 sm:px-6">{children}</div>
-          </motion.section>
+            <section
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              className={cn(
+                "w-full overflow-hidden rounded-lg border border-border bg-surface-overlay text-text-primary shadow-overlay",
+                className,
+              )}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-overlay px-5 py-4">
+                <h2
+                  id={titleId}
+                  className="text-[15px] font-semibold tracking-tight text-text-primary"
+                >
+                  {title}
+                </h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  aria-label="Close dialog"
+                >
+                  <X data-icon aria-hidden="true" />
+                </Button>
+              </div>
+              <div className="px-5 py-5 sm:px-6">{children}</div>
+            </section>
+          </Reveal>
         </motion.div>
       ) : null}
     </AnimatePresence>

@@ -1,17 +1,14 @@
 import { Suspense } from "react";
 
 import { AuthForm } from "@/components/auth/auth-form";
-import { AmbientBackground } from "@/components/visual/ambient-background";
+import { AuthShell } from "@/components/auth/auth-shell";
 
 export default function LoginPage() {
   return (
-    <>
-      <AmbientBackground variant="auth" />
-      <main className="relative flex min-h-screen items-center justify-center px-6 py-12">
-        <Suspense>
-          <AuthForm mode="login" />
-        </Suspense>
-      </main>
-    </>
+    <AuthShell>
+      <Suspense>
+        <AuthForm mode="login" />
+      </Suspense>
+    </AuthShell>
   );
 }

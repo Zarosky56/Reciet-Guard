@@ -48,6 +48,21 @@ export const receiptCreateSchema = z.object({
   raw_email_text: optionalText(10000).optional(),
   ai_confidence: z.coerce.number().min(0).max(1).nullable().optional(),
   status: z.enum(["active", "returned", "kept", "expired"]).default("active"),
+  product_brand: optionalText(120).optional(),
+  product_model: optionalText(200).optional(),
+  serial_number: optionalText(120).optional(),
+  category: optionalText(40).optional(),
+  warranty_period_months: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .nullable()
+    .optional(),
+  extraction_provider: z
+    .enum(["document_ai", "gemini", "groq", "manual"])
+    .nullable()
+    .optional(),
+  notes: optionalText(2000).optional(),
 });
 
 export const receiptUpdateSchema = receiptCreateSchema.partial();

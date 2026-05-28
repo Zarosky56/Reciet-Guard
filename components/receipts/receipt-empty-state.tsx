@@ -1,7 +1,30 @@
 import { Inbox, MailCheck, Sparkles } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { CopyForwardingAddress } from "@/components/receipts/copy-forwarding-address";
+import { Card, CardContent } from "@/components/ui/card";
+import { Grid } from "@/components/ui/grid";
+
+/**
+ * Premium UI Redesign — `<ReceiptEmptyState>` (task 8.4).
+ *
+ * Implements the redesigned empty-state pattern from
+ * `design-system/COMPONENT_PATTERNS.md` (§3 → "Pattern: Empty State
+ * Card") and design.md §"Composition patterns":
+ *
+ *   - `<Card>` with `border-dashed` (visually distinct from populated
+ *     cards),
+ *   - centered icon at `icon-lg` (`text-text-muted`, no decorative
+ *     tile per Requirement 7.4),
+ *   - title at `title-sm`, description at `body` width-constrained,
+ *   - no `bg-aurora-soft` overlay, no `border-conic-soft` halo, no
+ *     `shadow-inner-hair`, no `bg-bg-elevated`, no glow.
+ *
+ * The educational 3-step strip uses the redesigned `<Grid cols={3}
+ * gap="card">` primitive (Requirement 4.5) — no one-off
+ * `grid-cols-[…]` declarations, no nested decorative tiles.
+ *
+ * Implements: Requirements 6.4, 8.8, 11.7, 13.5.
+ */
 
 interface ReceiptEmptyStateProps {
   forwardingAddress: string;
@@ -25,52 +48,55 @@ const steps = [
   },
 ];
 
-export function ReceiptEmptyState({ forwardingAddress }: ReceiptEmptyStateProps) {
+export function ReceiptEmptyState({
+  forwardingAddress,
+}: ReceiptEmptyStateProps) {
   return (
-    <Card className="relative overflow-hidden border-dashed">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 -top-20 h-64 bg-aurora-soft opacity-70"
-      />
-      <CardContent className="relative flex flex-col items-center px-6 py-14 text-center md:py-16">
-        <span className="border-conic-soft relative flex size-14 items-center justify-center rounded-xl border border-border bg-bg-elevated text-action shadow-inner-hair">
-          <Inbox className="size-6" aria-hidden="true" />
-        </span>
-        <h2 className="mt-6 text-xl font-semibold tracking-[-0.01em] text-text-primary md:text-2xl">
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center text-center">
+        <Inbox
+          className="size-10 text-text-muted"
+          aria-hidden="true"
+        />
+        <h2 className="mt-4 text-base font-medium text-text-primary">
           No receipts yet
         </h2>
-        <p className="mt-3 max-w-md text-sm leading-6 text-text-secondary">
+        <p className="mt-2 max-w-sm text-sm text-text-secondary">
           Forward an order email from the address you signed up with, or paste
           one into the extraction box above.
         </p>
 
-        <div className="mt-8 w-full max-w-xl">
+        <div className="mt-5 w-full max-w-xl">
           <CopyForwardingAddress address={forwardingAddress} />
         </div>
 
-        <ul className="mt-10 grid w-full max-w-2xl gap-3 text-left sm:grid-cols-3">
-          {steps.map((step, i) => (
-            <li
-              key={step.title}
-              className="rounded-lg border border-border/70 bg-bg-elevated/60 p-4 shadow-inner-hair"
-            >
-              <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-md border border-border bg-bg text-action">
-                  <step.icon className="size-3.5" aria-hidden="true" />
-                </span>
-                <span className="font-mono text-[11px] text-text-muted">
-                  0{i + 1}
-                </span>
+        <Grid cols={3} gap="card" className="mt-8 w-full max-w-3xl text-left">
+          {steps.map((step, index) => {
+            const StepIcon = step.icon;
+            return (
+              <div
+                key={step.title}
+                className="rounded-md border border-border bg-canvas p-4"
+              >
+                <div className="flex items-center gap-2 text-text-muted">
+                  <StepIcon
+                    className="size-4 text-accent"
+                    aria-hidden="true"
+                  />
+                  <span className="font-mono text-xs tabular-nums">
+                    0{index + 1}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm font-medium text-text-primary">
+                  {step.title}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  {step.text}
+                </p>
               </div>
-              <p className="mt-3 text-sm font-medium text-text-primary">
-                {step.title}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-text-secondary">
-                {step.text}
-              </p>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </Grid>
       </CardContent>
     </Card>
   );

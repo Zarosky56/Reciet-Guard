@@ -4,6 +4,12 @@
 
 :root {
   color-scheme: dark;
+
+  /* ----------------------------------------------------------------- */
+  /* Legacy tokens — kept here additively during Phase 1 of the         */
+  /* premium-ui-redesign. These are slated for deletion in task 11.1    */
+  /* (Phase 4 cleanup). Do not consume in new code.                     */
+  /* ----------------------------------------------------------------- */
   --color-bg: #08080c;
   --color-bg-elevated: #0d0d14;
   --color-surface: #14141b;
@@ -24,6 +30,120 @@
   --ease-out-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out-premium: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ================================================================= */
+  /* Premium redesign tokens — Phase 1 (task 2.1). Authoritative.       */
+  /* When token names overlap with the legacy block above, the redesign */
+  /* declarations below take precedence per CSS cascade. Legacy lines   */
+  /* are removed in task 11.1.                                          */
+  /* ================================================================= */
+
+  /* --- Color tokens (Requirement 2.1, 2.5, 2.6) --- */
+  /* Canvas */
+  --color-canvas: oklch(0.13 0.005 270);
+  --color-canvas-raised: oklch(0.16 0.006 270);
+  /* Surface (re-declares legacy --color-surface, --color-surface-hover) */
+  --color-surface: oklch(0.19 0.007 270);
+  --color-surface-hover: oklch(0.22 0.008 270);
+  --color-surface-overlay: oklch(0.21 0.008 270);
+  /* Border (re-declares legacy --color-border, --color-border-strong, --color-border-focus) */
+  --color-border: oklch(0.27 0.009 270);
+  --color-border-strong: oklch(0.34 0.01 270);
+  --color-border-focus: oklch(0.78 0.13 78);
+  /* Text (re-declares legacy --color-text-primary, --color-text-secondary, --color-text-muted) */
+  --color-text-primary: oklch(0.96 0.005 90);
+  --color-text-secondary: oklch(0.74 0.012 90);
+  --color-text-muted: oklch(0.55 0.012 90);
+  /* Accent — single brand accent, perceptual color space (Requirement 2.5, 13.1) */
+  --color-accent: oklch(0.78 0.13 78);
+  --color-accent-hover: oklch(0.83 0.13 78);
+  --color-accent-tint: oklch(0.3 0.06 78);
+  /* Semantic */
+  --color-success: oklch(0.72 0.16 150);
+  --color-warning: oklch(0.78 0.15 70);
+  --color-danger: oklch(0.65 0.2 25);
+  --color-info: oklch(0.72 0.08 230);
+
+  /* --- Radius scale (Requirement 4.3) --- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* --- Container width tokens (Requirement 4.4) --- */
+  --container-auth: 26rem;
+  --container-narrow: 42rem;
+  --container-content: 56rem;
+  --container-wide: 72rem;
+
+  /* --- Motion tokens (Requirement 6.1) --- */
+  --motion-instant: 80ms;
+  --motion-quick: 150ms;
+  --motion-default: 220ms;
+  --motion-slow: 360ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0.1, 1);
+  --ease-linear: linear;
+
+  /* --- Typography type scale (Requirement 3.4) --- */
+  /* Each step ships size / line-height / tracking / weight as separate vars. */
+  --text-caption: 0.75rem;
+  --text-caption-line-height: 1rem;
+  --text-caption-tracking: 0.04em;
+  --text-caption-weight: 500;
+
+  --text-meta: 0.8125rem;
+  --text-meta-line-height: 1.125rem;
+  --text-meta-tracking: 0;
+  --text-meta-weight: 400;
+
+  --text-body: 0.875rem;
+  --text-body-line-height: 1.5rem;
+  --text-body-tracking: 0;
+  --text-body-weight: 400;
+
+  --text-body-lg: 1rem;
+  --text-body-lg-line-height: 1.625rem;
+  --text-body-lg-tracking: 0;
+  --text-body-lg-weight: 400;
+
+  --text-label: 0.875rem;
+  --text-label-line-height: 1.25rem;
+  --text-label-tracking: 0;
+  --text-label-weight: 500;
+
+  --text-title-sm: 1rem;
+  --text-title-sm-line-height: 1.375rem;
+  --text-title-sm-tracking: -0.005em;
+  --text-title-sm-weight: 500;
+
+  --text-title-md: 1.25rem;
+  --text-title-md-line-height: 1.625rem;
+  --text-title-md-tracking: -0.01em;
+  --text-title-md-weight: 600;
+
+  --text-title-lg: 1.5rem;
+  --text-title-lg-line-height: 1.875rem;
+  --text-title-lg-tracking: -0.015em;
+  --text-title-lg-weight: 600;
+
+  --text-display: 2.625rem;
+  --text-display-line-height: 1.05;
+  --text-display-tracking: -0.03em;
+  --text-display-weight: 600;
+
+  /* --- Shadow token — overlay only (Requirement 5.1, 5.3) --- */
+  --shadow-overlay:
+    0 12px 32px -8px oklch(0 0 0 / 0.55), 0 2px 6px oklch(0 0 0 / 0.35);
+}
+
+/* Display step scales up at md+ (Requirement 3.4 hero rule) */
+@media (min-width: 768px) {
+  :root {
+    --text-display: 3.75rem;
+  }
 }
 
 * {
@@ -45,7 +165,13 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-inter), Inter, system-ui, sans-serif;
   letter-spacing: -0.005em;
-  font-feature-settings: "cv11", "ss01", "ss03";
+  /*
+   * OpenType features — Requirement 3.3.
+   * Three minimum: cv11 (alternate single-story `a`), ss03 (alternate single-story `g`),
+   * tnum (tabular numbers). When task 2.3 swaps Inter for Geist, this set is re-mapped to
+   * Geist's available features (cv01 / cv02 / cv11 documented in DESIGN.md).
+   */
+  font-feature-settings: "cv11", "ss03", "tnum";
 }
 
 button,
@@ -83,116 +209,19 @@ textarea {
   border: 2px solid transparent;
 }
 
-/* Utility: ambient gradient text — used sparingly for hero only */
-.text-gradient-primary {
-  background: linear-gradient(
-    180deg,
-    #ffffff 0%,
-    #ffffff 40%,
-    rgba(236, 236, 241, 0.72) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-.text-gradient-action {
-  background: linear-gradient(135deg, #8db0ff 0%, #5b8cff 45%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
-
-/* Utility: subtle animated conic border for hero mark */
-.border-conic-soft {
-  position: relative;
-}
-
-.border-conic-soft::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from 180deg at 50% 50%,
-    rgba(91, 140, 255, 0) 0deg,
-    rgba(91, 140, 255, 0.45) 90deg,
-    rgba(91, 140, 255, 0) 180deg,
-    rgba(91, 140, 255, 0) 360deg
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.55;
-}
-
-/* Background scene utilities */
-.bg-scene-hero {
-  background:
-    radial-gradient(
-      120% 80% at 50% -10%,
-      rgba(91, 140, 255, 0.18) 0%,
-      rgba(91, 140, 255, 0) 60%
-    ),
-    radial-gradient(
-      80% 60% at 100% 0%,
-      rgba(120, 80, 255, 0.08) 0%,
-      rgba(120, 80, 255, 0) 60%
-    ),
-    var(--color-bg);
-}
-
-.bg-scene-auth {
-  background:
-    radial-gradient(
-      60% 50% at 50% 0%,
-      rgba(91, 140, 255, 0.16) 0%,
-      rgba(91, 140, 255, 0) 60%
-    ),
-    radial-gradient(
-      50% 50% at 50% 100%,
-      rgba(91, 140, 255, 0.08) 0%,
-      rgba(91, 140, 255, 0) 70%
-    ),
-    var(--color-bg);
-}
-
-.bg-grid-faint {
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-
-/* Masked grid for hero — fades out toward edges */
-.mask-fade-radial {
-  -webkit-mask-image: radial-gradient(
-    closest-side,
-    rgba(0, 0, 0, 0.9),
-    transparent 90%
-  );
-  mask-image: radial-gradient(
-    closest-side,
-    rgba(0, 0, 0, 0.9),
-    transparent 90%
-  );
-}
-
-.mask-fade-bottom {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 60%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%);
-}
+/*
+ * Deprecated decorative classes (`text-gradient-primary`,
+ * `text-gradient-action`, `border-conic-soft` + `::before`,
+ * `bg-scene-hero`, `bg-scene-auth`, `bg-grid-faint`,
+ * `mask-fade-radial`, `mask-fade-bottom`) were defined here in Phase 1
+ * with `@deprecated` markers and are deleted in task 11.1 of the
+ * premium-ui-redesign spec. The redesigned ambient layer lives in
+ * `<AmbientBackground variant="hero">` and is the only allowed tonal
+ * decoration (Requirement 5.5, 5.6, 5.7, 13.4, 13.6, 14.3).
+ *
+ * The aurora-* and card-elevated `backgroundImage` entries were defined
+ * in `tailwind.config.ts` (not here) and are removed by task 11.2.
+ */
 
 /* Premium focus ring — crisper on dark */
 .focus-ring {
@@ -214,5 +243,19 @@ textarea {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * Reduced-motion static-swap target — Requirement 6.6, 11.4.
+   * Indeterminate loops (`attention`, `route-progress`) opt into a static
+   * variant by setting `data-reduced-motion="static"` on the animated node.
+   * The selector hard-cancels animation and transition so the node renders
+   * as a static dot / static border highlight in reduced-motion mode.
+   */
+  [data-reduced-motion="static"],
+  [data-reduced-motion="static"]::before,
+  [data-reduced-motion="static"]::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

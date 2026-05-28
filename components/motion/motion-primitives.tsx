@@ -4,177 +4,104 @@ import {
   motion,
   useReducedMotion,
   type HTMLMotionProps,
-  type Variants,
 } from "framer-motion";
 import type { ReactNode } from "react";
 
 /**
- * Premium motion primitives.
+ * Motion primitives — Phase 4 cleanup (task 11.3).
  *
- * Tasteful, not flashy. Every animation respects prefers-reduced-motion.
- * Durations, easings, and distances are tuned to feel Linear/Framer-grade.
+ * The single canonical export is `<Reveal>`. The legacy `<FadeIn>`,
+ * `<Stagger>`, `<StaggerItem>`, `<HoverLift>` re-exports — kept as
+ * deprecated shims through Phase 2/3 so consumers continued to type-
+ * check while screens migrated — were deleted in this phase. The
+ * `premiumEase` re-export was deleted in the same change; consumers
+ * inline the ease tuple locally where they still drive a one-off
+ * framer-motion transition.
+ *
+ * `<Reveal>` animates `opacity` 0→1 and a small upward y-translate on
+ * mount using transform/opacity only, durations and easings pulled
+ * from the design tokens (`--motion-default`, `--ease-standard`)
+ * defined in `app/globals.css`. Reduced-motion users render the
+ * children with no animation.
+ *
+ * Implements: Requirements 6.7, 13.8 (deprecated motion primitives
+ * removed). Spec: design.md → "Motion tokens".
  */
 
-export const premiumEase = [0.22, 1, 0.36, 1] as const;
-export const smoothEase = [0.65, 0, 0.35, 1] as const;
+/**
+ * Standard easing curve = `--ease-standard` (`cubic-bezier(0.2, 0, 0, 1)`).
+ * Exposed as a tuple so framer-motion `transition.ease` can consume it.
+ */
+const standardEase = [0.2, 0, 0, 1] as const;
 
-/** Fade-in with a small upward drift. Ideal for page sections. */
-export const fadeInUp: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: (i: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: premiumEase,
-      delay: 0.04 * i,
-    },
-  }),
-};
+/**
+ * Default duration in seconds matching `--motion-default` (220ms).
+ * framer-motion's `transition.duration` is expressed in seconds.
+ */
+const defaultDurationSeconds = 0.22;
 
-/** Quick scale-fade for small chrome elements. */
-export const softFade: Variants = {
-  hidden: { opacity: 0, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.35, ease: premiumEase },
-  },
-};
+/** Y-translate offset (px) used for the canonical `<Reveal>` slide-in. */
+const defaultYOffsetPx = 8;
 
-/** Container used to stagger children without orchestrating explicit delays. */
-export const staggerContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.04,
-    },
-  },
-};
-
-export interface FadeInProps extends HTMLMotionProps<"div"> {
+export interface RevealProps extends HTMLMotionProps<"div"> {
+  /** Content to reveal. */
   children: ReactNode;
+  /** Delay before the reveal animation starts, in seconds. */
   delay?: number;
-  y?: number;
-  duration?: number;
-  as?: "div" | "section" | "article" | "header" | "main" | "span";
+  /** Optional className forwarded to the underlying motion element. */
+  className?: string;
+  /**
+   * HTML element to render via framer-motion. Defaults to `"div"`.
+   * Accepts any framer-motion-supported intrinsic element key.
+   */
+  as?: keyof typeof motion;
 }
 
 /**
- * Single-element fade-in-up that respects reduced motion.
- * Use to lift individual sections or cards into view.
+ * `<Reveal>` — the single motion primitive of the redesign.
+ *
+ * Animates `opacity` 0→1 and a small upward y-translate on mount.
+ * Uses transform/opacity only (no layout properties), the
+ * `--motion-default` duration, and the `--ease-standard` easing curve.
+ * Honours `prefers-reduced-motion`: reduced-motion users render the
+ * children with no entrance animation.
+ *
+ * @example
+ *   <Reveal delay={0.08}>
+ *     <Card>...</Card>
+ *   </Reveal>
  */
-export function FadeIn({
+export function Reveal({
   children,
   delay = 0,
-  y = 10,
-  duration = 0.5,
+  className,
   as = "div",
   ...props
-}: FadeInProps) {
+}: RevealProps) {
   const reduce = useReducedMotion();
   const Component = motion[as] as typeof motion.div;
 
   if (reduce) {
-    return <Component {...props}>{children}</Component>;
+    return (
+      <Component className={className} {...props}>
+        {children}
+      </Component>
+    );
   }
 
   return (
     <Component
-      initial={{ opacity: 0, y }}
+      initial={{ opacity: 0, y: defaultYOffsetPx }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration, ease: premiumEase, delay }}
+      transition={{
+        duration: defaultDurationSeconds,
+        ease: standardEase,
+        delay,
+      }}
+      className={className}
       {...props}
     >
       {children}
     </Component>
-  );
-}
-
-export interface StaggerProps extends HTMLMotionProps<"div"> {
-  children: ReactNode;
-  stagger?: number;
-  delay?: number;
-}
-
-/** Stagger wrapper — use inside a layout where children are StaggerItem. */
-export function Stagger({
-  children,
-  stagger = 0.06,
-  delay = 0.04,
-  ...props
-}: StaggerProps) {
-  const reduce = useReducedMotion();
-
-  if (reduce) {
-    return <motion.div {...props}>{children}</motion.div>;
-  }
-
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: {},
-        visible: {
-          transition: { staggerChildren: stagger, delayChildren: delay },
-        },
-      }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-export interface StaggerItemProps extends HTMLMotionProps<"div"> {
-  children: ReactNode;
-  y?: number;
-}
-
-export function StaggerItem({ children, y = 12, ...props }: StaggerItemProps) {
-  return (
-    <motion.div
-      variants={{
-        hidden: { opacity: 0, y },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.5, ease: premiumEase },
-        },
-      }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/**
- * Premium hover card — lifts on hover, scales down on press.
- * Respects reduced motion. Perfect for interactive list cards.
- */
-export interface HoverLiftProps extends HTMLMotionProps<"div"> {
-  children: ReactNode;
-  lift?: number;
-}
-
-export function HoverLift({ children, lift = 2, ...props }: HoverLiftProps) {
-  const reduce = useReducedMotion();
-
-  if (reduce) {
-    return <motion.div {...props}>{children}</motion.div>;
-  }
-
-  return (
-    <motion.div
-      whileHover={{ y: -lift }}
-      whileTap={{ y: 0, scale: 0.995 }}
-      transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.6 }}
-      {...props}
-    >
-      {children}
-    </motion.div>
   );
 }
