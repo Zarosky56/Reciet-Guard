@@ -45,7 +45,7 @@ export interface AIExtractionData {
   confidence: number;
 }
 
-export type AIProvider = "document_ai" | "gemini" | "groq";
+export type AIProvider = "document_ai" | "vertex_ai" | "gemini" | "groq";
 
 export type AIExtractionResult =
   | {

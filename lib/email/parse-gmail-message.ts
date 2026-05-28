@@ -1,4 +1,13 @@
+import "server-only";
+
 import type { gmail_v1 } from "googleapis";
+
+export interface GmailAttachmentRef {
+  filename: string;
+  mimeType: string;
+  attachmentId: string;
+  size: number;
+}
 
 export interface ParsedGmailMessage {
   gmailMessageId: string;
@@ -7,7 +16,18 @@ export interface ParsedGmailMessage {
   receivedAt: string;
   bodyText: string;
   attachmentFilenames: string[];
+  /** PDF/image attachments suitable for Document AI processing. */
+  receiptAttachments: GmailAttachmentRef[];
 }
+
+const RECEIPT_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
 
 function decodeBase64Url(data: string) {
   const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
@@ -30,26 +50,42 @@ function collectBodyParts(
   textParts: string[],
   htmlParts: string[],
   attachmentFilenames: string[],
+  receiptAttachments: GmailAttachmentRef[],
 ) {
   if (!part) {
     return;
   }
 
-  if (part.filename) {
-    attachmentFilenames.push(part.filename);
+  const filename = part.filename ?? "";
+  const mimeType = part.mimeType ?? "";
+  const attachmentId = part.body?.attachmentId ?? "";
+
+  if (filename) {
+    attachmentFilenames.push(filename);
+    if (
+      attachmentId &&
+      RECEIPT_MIME_TYPES.has(mimeType.toLowerCase())
+    ) {
+      receiptAttachments.push({
+        filename,
+        mimeType,
+        attachmentId,
+        size: Number(part.body?.size ?? 0),
+      });
+    }
   }
 
   const data = part.body?.data;
-  if (data && part.mimeType === "text/plain") {
+  if (data && mimeType === "text/plain") {
     textParts.push(decodeBase64Url(data));
   }
 
-  if (data && part.mimeType === "text/html") {
+  if (data && mimeType === "text/html") {
     htmlParts.push(stripHtml(decodeBase64Url(data)));
   }
 
   for (const child of part.parts ?? []) {
-    collectBodyParts(child, textParts, htmlParts, attachmentFilenames);
+    collectBodyParts(child, textParts, htmlParts, attachmentFilenames, receiptAttachments);
   }
 }
 
@@ -82,12 +118,14 @@ export function parseGmailMessage(
   const textParts: string[] = [];
   const htmlParts: string[] = [];
   const attachmentFilenames: string[] = [];
+  const receiptAttachments: GmailAttachmentRef[] = [];
 
   collectBodyParts(
     message.payload ?? undefined,
     textParts,
     htmlParts,
     attachmentFilenames,
+    receiptAttachments,
   );
 
   if (message.payload?.body?.data) {
@@ -110,5 +148,6 @@ export function parseGmailMessage(
       : new Date().toISOString(),
     bodyText: textParts.join("\n\n").trim() || htmlParts.join("\n\n").trim(),
     attachmentFilenames,
+    receiptAttachments,
   };
 }

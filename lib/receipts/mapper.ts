@@ -47,6 +47,7 @@ export function mapReceipt(row: ReceiptRow): ReceiptWithUrgency {
     warranty_period_months: numberOrNull(row.warranty_period_months),
     extraction_provider:
       row.extraction_provider === "document_ai" ||
+      row.extraction_provider === "vertex_ai" ||
       row.extraction_provider === "gemini" ||
       row.extraction_provider === "groq" ||
       row.extraction_provider === "manual"

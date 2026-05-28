@@ -59,7 +59,7 @@ export const receiptCreateSchema = z.object({
     .nullable()
     .optional(),
   extraction_provider: z
-    .enum(["document_ai", "gemini", "groq", "manual"])
+    .enum(["document_ai", "vertex_ai", "gemini", "groq", "manual"])
     .nullable()
     .optional(),
   notes: optionalText(2000).optional(),

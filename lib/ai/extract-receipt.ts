@@ -7,6 +7,11 @@ import {
 } from "@/lib/ai/providers/document-ai";
 import { extractWithGemini } from "@/lib/ai/providers/gemini";
 import { extractWithGroq } from "@/lib/ai/providers/groq";
+import {
+  extractWithVertexAi,
+  isVertexAiEnabled,
+  VertexAiUnavailableError,
+} from "@/lib/ai/providers/vertex-ai";
 import { normalizeExtractionData } from "@/lib/ai/schema";
 import type {
   AIExtractionData,
@@ -16,14 +21,22 @@ import type {
 
 /**
  * Provider chain (see .kiro/steering/cost-rules.md):
- *   Document AI (only if a document is supplied AND ENABLE_DOCUMENT_AI=true)
- *     → Gemini API (free tier)
- *       → Groq (free tier)
- *         → needs_review
  *
- * Document AI runs on the user's Google Cloud trial credits. When credits
- * run out, billing/quota errors are caught and we silently fall through to
- * the free providers.
+ *   document path (PDF/image supplied):
+ *     Document AI (trial credits, premium accuracy for invoices)
+ *       → Vertex AI Gemini (trial credits, large quota)
+ *         → AI Studio Gemini (free tier daily quota)
+ *           → Groq (free tier)
+ *             → needs_review
+ *
+ *   text-only path:
+ *     Vertex AI Gemini (if enabled, uses trial credits)
+ *       → AI Studio Gemini (free tier)
+ *         → Groq (free tier)
+ *           → needs_review
+ *
+ * Trial-aware errors (billing/quota/auth) are caught and the chain falls
+ * through silently so users never see paid-feature failures.
  */
 
 const fallbackData: AIExtractionData = {
@@ -39,15 +52,30 @@ const fallbackData: AIExtractionData = {
 
 interface TextProvider {
   name: AIProvider;
+  enabled?: () => boolean;
   extract: (emailText: string) => Promise<string>;
+  /** Return true if the error means "skip silently". */
+  isUnavailable?: (error: unknown) => boolean;
 }
 
-const textProviders: TextProvider[] = [
-  { name: "gemini", extract: extractWithGemini },
-  { name: "groq", extract: extractWithGroq },
-];
-
 const MIN_CONFIDENCE = 0.7;
+
+const textProviderChain: TextProvider[] = [
+  {
+    name: "vertex_ai",
+    enabled: isVertexAiEnabled,
+    extract: extractWithVertexAi,
+    isUnavailable: (error) => error instanceof VertexAiUnavailableError,
+  },
+  {
+    name: "gemini",
+    extract: extractWithGemini,
+  },
+  {
+    name: "groq",
+    extract: extractWithGroq,
+  },
+];
 
 export interface ExtractInput {
   /** Plain email/receipt text used for LLM-based providers. */
@@ -87,7 +115,9 @@ async function tryTextProviders(
   emailText: string,
   failures: string[],
 ): Promise<{ provider: AIProvider; data: AIExtractionData } | null> {
-  for (const provider of textProviders) {
+  for (const provider of textProviderChain) {
+    if (provider.enabled && !provider.enabled()) continue;
+
     try {
       const raw = await provider.extract(emailText);
       const repaired = repairJson(raw);
@@ -104,6 +134,10 @@ async function tryTextProviders(
       failures.push(`${provider.name}: low confidence ${data.confidence}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
+      if (provider.isUnavailable?.(error)) {
+        failures.push(`${provider.name}: ${message}`);
+        continue;
+      }
       failures.push(`${provider.name}: ${message}`);
     }
   }

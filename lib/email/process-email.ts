@@ -1,8 +1,12 @@
 import "server-only";
 
-import { extractReceiptFromEmail } from "@/lib/ai/extract-receipt";
+import { extractReceipt } from "@/lib/ai/extract-receipt";
+import { createGmailClient } from "@/lib/email/gmail-client";
+import type {
+  GmailAttachmentRef,
+  ParsedGmailMessage,
+} from "@/lib/email/parse-gmail-message";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ParsedGmailMessage } from "@/lib/email/parse-gmail-message";
 
 export interface GmailProcessingResult {
   messageId: string;
@@ -41,6 +45,36 @@ async function findUserIdByEmail(email: string) {
   }
 
   return null;
+}
+
+/**
+ * Download a Gmail attachment's raw bytes via the Gmail API.
+ * Returns null on failure so callers can fall back to text extraction.
+ */
+async function downloadAttachment(
+  gmailMessageId: string,
+  attachment: GmailAttachmentRef,
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  try {
+    const gmail = createGmailClient();
+    const response = await gmail.users.messages.attachments.get({
+      userId: "me",
+      messageId: gmailMessageId,
+      id: attachment.attachmentId,
+    });
+
+    const data = response.data.data;
+    if (!data) return null;
+
+    const buffer = Buffer.from(
+      data.replace(/-/g, "+").replace(/_/g, "/"),
+      "base64",
+    );
+
+    return { buffer, mimeType: attachment.mimeType };
+  } catch {
+    return null;
+  }
 }
 
 export async function processParsedEmail(
@@ -105,33 +139,20 @@ export async function processParsedEmail(
     };
   }
 
-  const hasPdfAttachment = email.attachmentFilenames.some((filename) =>
-    filename.toLowerCase().endsWith(".pdf"),
-  );
-
-  if (hasPdfAttachment && email.bodyText.trim().length < 20) {
-    const error =
-      "PDF receipt attachments are not parsed yet. Forward an email with receipt details in the body, or paste the receipt text manually.";
-
-    await admin.from("email_logs").insert({
-      user_id: userId,
-      gmail_message_id: email.gmailMessageId,
-      from_address: email.fromAddress,
-      subject: email.subject,
-      received_at: email.receivedAt,
-      processing_status: "needs_review",
-      error_message: error,
-    });
-
-    return {
-      messageId: email.gmailMessageId,
-      status: "needs_review",
-      error,
-    };
+  // If a PDF/image attachment is present, download it and try Document AI first.
+  let document: { buffer: Buffer; mimeType: string } | null = null;
+  const primaryAttachment = email.receiptAttachments[0];
+  if (primaryAttachment && primaryAttachment.size <= 20 * 1024 * 1024) {
+    document = await downloadAttachment(email.gmailMessageId, primaryAttachment);
   }
 
   try {
-    const extraction = await extractReceiptFromEmail(email.bodyText);
+    const extraction = await extractReceipt({
+      emailText: email.bodyText.length > 20 ? email.bodyText : email.subject ?? "",
+      document: document
+        ? { content: document.buffer, mimeType: document.mimeType }
+        : undefined,
+    });
 
     if (extraction.status !== "success") {
       await admin.from("email_logs").insert({
@@ -164,6 +185,7 @@ export async function processParsedEmail(
         warranty_deadline: extraction.data.warranty_deadline ?? null,
         raw_email_text: email.bodyText.slice(0, 10000),
         ai_confidence: extraction.data.confidence,
+        extraction_provider: extraction.provider,
         status: "active",
       })
       .select("id")

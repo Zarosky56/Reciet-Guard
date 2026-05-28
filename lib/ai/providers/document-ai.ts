@@ -1,5 +1,6 @@
 import { DocumentProcessorServiceClient } from "@google-cloud/documentai";
 
+import { getGoogleAuth } from "@/lib/google-cloud/auth";
 import type { AIExtractionData } from "@/types/receipt";
 
 /**
@@ -11,6 +12,7 @@ import type { AIExtractionData } from "@/types/receipt";
  *  - Caller catches `DocumentAiUnavailableError` and falls back to Gemini → Groq.
  *  - Errors that look billing/quota-related are treated as "unavailable" so the
  *    chain silently degrades when trial credits run out.
+ *  - Auth uses our shared helper (ADC locally, WIF on Vercel).
  */
 
 export class DocumentAiUnavailableError extends Error {
@@ -31,7 +33,9 @@ let cachedClient: DocumentProcessorServiceClient | null = null;
 
 function getClient(): DocumentProcessorServiceClient {
   if (!cachedClient) {
-    cachedClient = new DocumentProcessorServiceClient();
+    cachedClient = new DocumentProcessorServiceClient({
+      auth: getGoogleAuth(),
+    });
   }
   return cachedClient;
 }
