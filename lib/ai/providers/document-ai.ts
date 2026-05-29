@@ -109,6 +109,25 @@ function pickEntity(
   return undefined;
 }
 
+/** Pick the first entity whose money value parses to a non-zero amount. */
+function pickMoneyEntity(
+  entities: ExpenseEntity[],
+  ...types: string[]
+): ExpenseEntity | undefined {
+  for (const type of types) {
+    const candidates = entities.filter((entity) => entity.type === type);
+    for (const candidate of candidates) {
+      const amount = entityMoney(candidate).amount;
+      if (amount !== null && amount > 0) {
+        return candidate;
+      }
+    }
+  }
+  // Fallback: return the first found regardless of amount, so we still surface
+  // the entity if all came back zero (lets caller log it).
+  return pickEntity(entities, ...types);
+}
+
 function entityText(entity: ExpenseEntity | undefined): string | null {
   if (!entity) return null;
   const normalized = entity.normalizedValue?.text?.trim();
@@ -117,30 +136,70 @@ function entityText(entity: ExpenseEntity | undefined): string | null {
   return mention && mention.length > 0 ? mention : null;
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  "₹": "INR",
+  "rs.": "INR",
+  "rs ": "INR",
+  inr: "INR",
+  "$": "USD",
+  usd: "USD",
+  "€": "EUR",
+  eur: "EUR",
+  "£": "GBP",
+  gbp: "GBP",
+  "¥": "JPY",
+  jpy: "JPY",
+};
+
+function detectCurrencyFromText(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const [symbol, code] of Object.entries(CURRENCY_SYMBOLS)) {
+    if (lower.includes(symbol)) return code;
+  }
+  return null;
+}
+
 function entityMoney(
   entity: ExpenseEntity | undefined,
 ): { amount: number | null; currency: string | null } {
   if (!entity) return { amount: null, currency: null };
 
+  // Try the structured Money value first.
   const money = entity.normalizedValue?.moneyValue;
   if (money) {
     const units = typeof money.units === "string" ? Number(money.units) : (money.units ?? 0);
     const nanos = money.nanos ?? 0;
     const amount = Number(units) + Number(nanos) / 1e9;
-    return {
-      amount: Number.isFinite(amount) ? amount : null,
-      currency: money.currencyCode?.toUpperCase() ?? null,
-    };
+    if (Number.isFinite(amount) && amount !== 0) {
+      return {
+        amount,
+        currency: money.currencyCode?.toUpperCase() ?? null,
+      };
+    }
   }
 
+  // Fall back to parsing the raw text. Indian invoices often have
+  // "₹ 2,999.00" or "Rs. 2,999/-" which the structured parser sometimes
+  // misreads as 0. Be lenient about symbols and separators.
   const text = entityText(entity);
   if (!text) return { amount: null, currency: null };
-  const cleaned = text.replace(/[^0-9.,-]/g, "").replace(/,/g, "");
+
+  const detectedCurrency =
+    money?.currencyCode?.toUpperCase() ?? detectCurrencyFromText(text);
+
+  // Strip currency symbols and trailing markers, keep digits/separators.
+  const cleaned = text
+    .replace(/[^\d.,-]/g, "")
+    .replace(/(\d),(\d{3})/g, "$1$2") // "2,999" → "2999"
+    .replace(/,/g, ".") // any leftover comma → decimal point (EU style)
+    .replace(/(\.\d+)\./g, "$1"); // collapse extra dots
+
   const amount = Number.parseFloat(cleaned);
-  return {
-    amount: Number.isFinite(amount) ? amount : null,
-    currency: null,
-  };
+  if (!Number.isFinite(amount) || amount === 0) {
+    return { amount: null, currency: detectedCurrency };
+  }
+
+  return { amount, currency: detectedCurrency };
 }
 
 function entityDate(entity: ExpenseEntity | undefined): string | null {
@@ -219,7 +278,7 @@ export async function extractWithDocumentAi(
     "line_item_description",
     "description",
   );
-  const total = pickEntity(
+  const total = pickMoneyEntity(
     entities,
     "total_amount",
     "net_amount",

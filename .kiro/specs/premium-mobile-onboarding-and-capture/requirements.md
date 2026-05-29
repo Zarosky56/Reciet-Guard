@@ -48,7 +48,7 @@ The new UI must reuse the redesigned token system, primitives, and motion vocabu
 4. THE Onboarding_Flow SHALL render a single primary action button per step, labelled `Continue` for steps 1 through 4 and `Get started` for step 5.
 5. WHEN the User taps the primary action button on step `N` where `N < 5`, THE System SHALL advance to step `N + 1` within 150ms.
 6. WHEN the User taps the primary action button on step 5, THE System SHALL set `Onboarding_State.completed` to `true`, persist the state via Onboarding_Persistence, dismiss the overlay, and reveal the dashboard within 250ms.
-7. WHEN the User performs a horizontal swipe gesture exceeding 64 CSS pixels on a step, THE System SHALL advance forward (left swipe) or retreat backward (right swipe) by exactly one step, clamped at the first and last step.
+7. WHEN the User performs a horizontal swipe gesture on a step, THE System SHALL move forward (left swipe) or backward (right swipe) by `floor(swipeDistanceCssPixels / 96)` steps with a minimum of one step per gesture and a maximum equal to the remaining steps in that direction, clamped at the first and last step; gestures shorter than 64 CSS pixels SHALL be ignored.
 8. THE Onboarding_Flow SHALL render a step-progress indicator showing the current step index and the total step count using the redesigned `<Loader>` family's static accent dot pattern; THE System SHALL NOT render any indeterminate animation in the Onboarding_Flow.
 9. WHEN the User taps a `Skip` affordance present on every step except step 5, THE System SHALL set `Onboarding_State.completed` to `true`, persist the state, and dismiss the overlay within 250ms.
 10. WHEN an authenticated User loads the dashboard route AND `Onboarding_State.completed` is `true`, THE System SHALL NOT render the Onboarding_Flow.
@@ -65,7 +65,7 @@ The new UI must reuse the redesigned token system, primitives, and motion vocabu
 1. THE Onboarding_Persistence layer SHALL write Onboarding_State to the `receipt_guardian.onboarding_v1` localStorage key on every state change.
 2. WHEN the dashboard route mounts, THE Onboarding_Persistence layer SHALL read the `receipt_guardian.onboarding_v1` localStorage key and parse it via the Onboarding_Serializer.
 3. IF the stored value is missing, empty, or fails to parse, THEN THE Onboarding_Persistence layer SHALL initialise Onboarding_State to `{ completed: false, lastStep: 0, version: 1 }`.
-4. IF the stored value parses successfully but its `version` field does not match the current schema version, THEN THE Onboarding_Persistence layer SHALL initialise Onboarding_State to `{ completed: false, lastStep: 0, version: 1 }` and overwrite the stored value.
+4. IF the stored value parses successfully but its `version` field does not match the current schema version, THEN THE Onboarding_Persistence layer SHALL overwrite the stored value with exactly `{ completed: false, lastStep: 0, version: 1 }` and use that exact value as the in-memory Onboarding_State.
 5. THE Onboarding_Serializer SHALL be a pure function from `Onboarding_State` to `string` whose inverse parser, when applied to the serialiser's output, returns a value structurally equal to the input (round-trip property).
 6. IF localStorage is unavailable (private browsing, quota exceeded, blocked by policy), THEN THE Onboarding_Persistence layer SHALL fall back to an in-memory Onboarding_State for the lifetime of the page and SHALL NOT throw.
 
@@ -100,16 +100,17 @@ The new UI must reuse the redesigned token system, primitives, and motion vocabu
 #### Acceptance Criteria
 
 1. THE System SHALL render a `Capture` action on the dashboard hero that opens the Receipt_Capture_Sheet.
-2. WHEN the Receipt_Capture_Sheet is open AND the User selects `Take photo`, THE System SHALL request camera access via `navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })`.
-3. IF `navigator.mediaDevices.getUserMedia` is unavailable in the User's browser, THEN THE System SHALL fall back to an `<input type="file" accept="image/*" capture="environment">` element so the User can still capture a still image via the OS camera app.
-4. IF the User denies the camera permission prompt, THEN THE System SHALL display the message `Camera access was blocked. Use Upload instead, or allow camera access in your browser settings.` and SHALL keep the Receipt_Capture_Sheet open with the Media_Upload action focusable.
-5. WHEN camera access is granted, THE System SHALL render a live preview at the device's native aspect ratio inside the Receipt_Capture_Sheet, with a single primary `Capture` shutter button and a secondary `Cancel` button.
-6. WHEN the User activates the shutter button, THE System SHALL produce a single still image as a JPEG Blob at a maximum long-edge resolution of 2048 CSS pixels and a maximum file size of 4 MB.
-7. WHEN a still image is produced, THE System SHALL display the image in a review state inside the Receipt_Capture_Sheet with `Retake` and `Use photo` actions.
-8. WHEN the User activates `Use photo`, THE System SHALL submit the resulting Captured_Asset to the Extraction_Endpoint via the Provider_Chain.
-9. WHEN the System closes the Receipt_Capture_Sheet for any reason, THE System SHALL stop every active `MediaStreamTrack` it opened so the device camera light turns off within 500ms.
-10. THE Photo_Capture pathway SHALL request the camera only after an explicit User gesture (the `Take photo` activation) and SHALL NOT request camera access on dashboard mount.
-11. THE Receipt_Capture_Sheet SHALL meet the redesigned 44×44 CSS-pixel touch-target minimum on every interactive element.
+2. WHEN the Receipt_Capture_Sheet is open, THE System SHALL render two equally weighted entry points: `Take photo` (Photo_Capture pathway) and `Upload` (Media_Upload pathway); both entry points SHALL be visible regardless of camera availability so the User can always choose between live capture and file selection.
+3. WHEN the User selects `Take photo`, THE System SHALL request camera access via `navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })`.
+4. IF `navigator.mediaDevices.getUserMedia` is unavailable in the User's browser, THEN THE System SHALL fall back to an `<input type="file" accept="image/*" capture="environment">` element so the User can still capture a still image via the OS camera app.
+5. IF the User denies the camera permission prompt, THEN THE System SHALL display the message `Camera access was blocked. Use Upload instead, or allow camera access in your browser settings.` and SHALL keep the Receipt_Capture_Sheet open with the Media_Upload action focusable.
+6. WHEN camera access is granted, THE System SHALL render a live preview at the device's native aspect ratio inside the Receipt_Capture_Sheet, with a single primary `Capture` shutter button and a secondary `Cancel` button.
+7. WHEN the User activates the shutter button, THE System SHALL produce a single still image as a JPEG Blob at a maximum long-edge resolution of 2048 CSS pixels and a maximum file size of 4 MB.
+8. WHEN a still image is produced, THE System SHALL display the image in a review state inside the Receipt_Capture_Sheet with `Retake` and `Use photo` actions.
+9. WHEN the User activates `Use photo`, THE System SHALL submit the resulting Captured_Asset to the Extraction_Endpoint via the Provider_Chain.
+10. WHEN the System closes the Receipt_Capture_Sheet for any reason, THE System SHALL stop every active `MediaStreamTrack` it opened so the device camera light turns off within 500ms.
+11. THE Photo_Capture pathway SHALL request the camera only after an explicit User gesture (the `Take photo` activation) and SHALL NOT request camera access on dashboard mount.
+12. THE Receipt_Capture_Sheet SHALL meet the redesigned 44×44 CSS-pixel touch-target minimum on every interactive element.
 
 ### Requirement 5: Image and Media Upload for Receipts
 
@@ -139,7 +140,7 @@ The new UI must reuse the redesigned token system, primitives, and motion vocabu
 5. WHEN the Extraction_Endpoint returns `status: "success"`, THE System SHALL open the existing receipt editor sheet pre-filled with the extracted fields and a `Save` action so the User can review and persist the receipt.
 6. WHEN the Extraction_Endpoint returns `status: "needs_review"`, THE System SHALL open the existing receipt editor sheet with empty fields and the toast message `Extraction needs review. You can enter it manually.`.
 7. THE System SHALL NOT render any UI affordance that prompts the User to enable, upgrade to, or pay for a Google Cloud product.
-8. THE Extraction_Endpoint SHALL return within 30 seconds for any single Captured_Asset; IF a provider exceeds 30 seconds for a single attempt, THEN THE Extraction_Endpoint SHALL abort that provider and fall through to the next one.
+8. THE Extraction_Endpoint SHALL return within 30 seconds for any single Captured_Asset; IF a provider exceeds 30 seconds for a single attempt, THEN THE Extraction_Endpoint SHALL abort that provider and fall through to the next one. IF every provider in the Provider_Chain is aborted, fails, or returns confidence below threshold (whether by timeout, error, or low confidence), THEN THE Extraction_Endpoint SHALL return `status: "needs_review"` per clause 4 even when the cumulative chain time exceeds 30 seconds.
 
 ### Requirement 7: Seamless Integration, Accessibility, and Performance
 
