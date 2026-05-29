@@ -126,21 +126,6 @@ function pickLargestMoneyEntity(
   return best;
 }
 
-/** Last-ditch: scan ALL entities for the largest non-zero money value. */
-function findLargestMoneyAnywhere(
-  entities: ExpenseEntity[],
-): { amount: number; currency: string | null } | null {
-  let best: { amount: number; currency: string | null } | null = null;
-  for (const entity of entities) {
-    const money = entityMoney(entity);
-    if (money.amount === null || money.amount <= 0) continue;
-    if (!best || money.amount > best.amount) {
-      best = { amount: money.amount, currency: money.currency };
-    }
-  }
-  return best;
-}
-
 function entityText(entity: ExpenseEntity | undefined): string | null {
   if (!entity) return null;
   const normalized = entity.normalizedValue?.text?.trim();
@@ -291,10 +276,10 @@ export async function extractWithDocumentAi(
     "line_item_description",
     "description",
   );
-  // Total: try labeled "total" fields first, then fall back to the largest
-  // money value across "amount-like" fields, then finally the largest money
-  // anywhere in the doc. Indian tax invoices often label the grand total
-  // unconventionally (e.g. just "Amount") which trips Document AI's training.
+  // Total: try labeled "total" fields first. We do NOT fall back to "largest
+  // money anywhere" because Document AI sometimes mislabels barcodes, phone
+  // numbers, GSTINs, etc. as money. If labeled totals fail, the orchestrator
+  // falls through to Vertex AI multimodal which reads the PDF visually.
   const totalCandidates = [
     "total_amount",
     "grand_total",
@@ -305,18 +290,10 @@ export async function extractWithDocumentAi(
     "amount_paid",
     "net_amount",
   ];
-  const broaderCandidates = [
-    ...totalCandidates,
-    "subtotal",
-    "amount",
-    "line_item/amount",
-  ];
   const labeledTotal = pickLargestMoneyEntity(entities, ...totalCandidates);
-  const broadestTotal =
-    labeledTotal ?? pickLargestMoneyEntity(entities, ...broaderCandidates);
-  const totalMoney = broadestTotal
-    ? entityMoney(broadestTotal.entity)
-    : findLargestMoneyAnywhere(entities) ?? { amount: null, currency: null };
+  const totalMoney = labeledTotal
+    ? entityMoney(labeledTotal.entity)
+    : { amount: null as number | null, currency: null as string | null };
   const currencyEntity = pickEntity(entities, "currency", "currency_code");
   const purchaseDate = pickEntity(
     entities,

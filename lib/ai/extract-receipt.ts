@@ -200,26 +200,29 @@ export async function extractReceipt(
   const failures: string[] = [];
 
   if (input.document) {
-    const docResult = await tryDocumentAi(input.document, failures);
-    if (docResult) {
-      return {
-        status: "success",
-        provider: "document_ai",
-        data: applyReturnDeadlineDefault(docResult, {
-          emailText: input.emailText,
-          subject: input.subject,
-        }),
-      };
-    }
-
-    // Document AI couldn't parse it well. Try Vertex AI multimodal which can
-    // read the PDF/image directly with Gemini's understanding.
+    // Vertex AI multimodal reads the PDF/image directly with Gemini —
+    // far more reliable on non-US invoice layouts (Indian tax invoices,
+    // hotel folios, etc.). Try it first when available.
     const multimodalResult = await tryVertexMultimodal(input.document, failures);
     if (multimodalResult) {
       return {
         status: "success",
         provider: "vertex_ai",
         data: applyReturnDeadlineDefault(multimodalResult, {
+          emailText: input.emailText,
+          subject: input.subject,
+        }),
+      };
+    }
+
+    // Fall back to Document AI's structured Expense Parser for clean US-style
+    // receipts where it shines.
+    const docResult = await tryDocumentAi(input.document, failures);
+    if (docResult) {
+      return {
+        status: "success",
+        provider: "document_ai",
+        data: applyReturnDeadlineDefault(docResult, {
           emailText: input.emailText,
           subject: input.subject,
         }),
