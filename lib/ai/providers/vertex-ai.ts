@@ -13,12 +13,31 @@ import { getGoogleAuth } from "@/lib/google-cloud/auth";
  */
 
 /**
- * Vertex AI model. We use 1.5-flash-002 which is GA in every project on every
- * region, instead of the newer 2.0/2.5 models that may require enrollment.
- * 1.5-flash supports multimodal (PDF/image) inputs and is plenty smart for
- * receipt/invoice extraction.
+ * Vertex AI model fallback chain. Tries the smartest first; falls through
+ * if your project doesn't have access to a given model. All are multimodal
+ * (PDF/image) capable. Trial credits comfortably cover all of them.
+ *
+ *  - 2.5-flash: best accuracy/cost ratio. ~$0.005 per invoice.
+ *  - 2.0-flash: smart, cheap, requires opt-in on some projects.
+ *  - 1.5-pro: extremely smart, GA everywhere.
+ *  - 1.5-flash-002: bulletproof fallback, GA everywhere.
  */
-const VERTEX_MODEL = "gemini-1.5-flash-002";
+const VERTEX_MODEL_CHAIN = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-pro-002",
+  "gemini-1.5-flash-002",
+];
+
+function isModelNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("not found") ||
+    msg.includes("publisher model") ||
+    msg.includes("does not have access")
+  );
+}
 
 export class VertexAiUnavailableError extends Error {
   constructor(message: string) {
@@ -90,51 +109,66 @@ async function callVertex(
     );
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: VERTEX_MODEL,
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: "application/json",
+  const parts: Array<
+    { text: string } | { inlineData: { data: string; mimeType: string } }
+  > = [{ text: textPrompt }];
+
+  if (document) {
+    parts.push({
+      inlineData: {
+        data: document.content.toString("base64"),
+        mimeType: document.mimeType,
       },
     });
+  }
 
-    const parts: Array<
-      { text: string } | { inlineData: { data: string; mimeType: string } }
-    > = [{ text: textPrompt }];
+  let lastError: unknown = null;
 
-    if (document) {
-      parts.push({
-        inlineData: {
-          data: document.content.toString("base64"),
-          mimeType: document.mimeType,
+  for (const modelId of VERTEX_MODEL_CHAIN) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelId,
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
         },
       });
-    }
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts }],
-    });
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts }],
+      });
 
-    const text =
-      result.response.candidates?.[0]?.content?.parts
-        ?.map((part) => ("text" in part ? part.text : ""))
-        .join("") ?? "";
+      const text =
+        result.response.candidates?.[0]?.content?.parts
+          ?.map((part) => ("text" in part ? part.text : ""))
+          .join("") ?? "";
 
-    if (!text) {
-      throw new Error("Empty Vertex AI response");
+      if (!text) {
+        throw new Error(`Empty Vertex AI response from ${modelId}`);
+      }
+      return text;
+    } catch (error) {
+      lastError = error;
+      // If it's "model not found / no access", try the next model in the chain.
+      if (isModelNotFoundError(error)) continue;
+      // Billing/quota: bail out so caller falls through to other providers.
+      if (looksLikeBillingError(error)) {
+        throw new VertexAiUnavailableError(
+          `Vertex AI unavailable (billing/quota): ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+      // Other errors: try next model anyway.
+      continue;
     }
-    return text;
-  } catch (error) {
-    if (looksLikeBillingError(error)) {
-      throw new VertexAiUnavailableError(
-        `Vertex AI unavailable (billing/quota): ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-    throw error;
   }
+
+  throw new VertexAiUnavailableError(
+    `Vertex AI: no accessible model. Last error: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
 }
 
 export async function extractWithVertexAi(emailText: string): Promise<string> {
