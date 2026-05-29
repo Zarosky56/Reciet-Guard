@@ -203,13 +203,49 @@ export async function extractWithDocumentAi(
 
   const entities = (document?.entities ?? []) as ExpenseEntity[];
 
-  const supplier = pickEntity(entities, "supplier_name", "merchant_name", "receiver_name");
-  const lineItem = pickEntity(entities, "line_item", "line_item/description");
-  const total = pickEntity(entities, "total_amount", "net_amount");
-  const currencyEntity = pickEntity(entities, "currency");
-  const purchaseDate = pickEntity(entities, "receipt_date", "invoice_date", "purchase_date");
-  const returnDeadline = pickEntity(entities, "return_deadline");
-  const warrantyDeadline = pickEntity(entities, "warranty_deadline");
+  // Many invoices use different field names. Try common variants.
+  const supplier = pickEntity(
+    entities,
+    "supplier_name",
+    "merchant_name",
+    "receiver_name",
+    "vendor_name",
+    "seller_name",
+  );
+  const lineItem = pickEntity(
+    entities,
+    "line_item",
+    "line_item/description",
+    "line_item_description",
+    "description",
+  );
+  const total = pickEntity(
+    entities,
+    "total_amount",
+    "net_amount",
+    "grand_total",
+    "amount_due",
+    "balance_due",
+    "total_due",
+    "invoice_total",
+    "amount_paid",
+    "subtotal",
+  );
+  const currencyEntity = pickEntity(entities, "currency", "currency_code");
+  const purchaseDate = pickEntity(
+    entities,
+    "receipt_date",
+    "invoice_date",
+    "purchase_date",
+    "issue_date",
+    "date",
+  );
+  const returnDeadline = pickEntity(entities, "return_deadline", "return_by");
+  const warrantyDeadline = pickEntity(
+    entities,
+    "warranty_deadline",
+    "warranty_expiry",
+  );
 
   const totalMoney = entityMoney(total);
   const currency =

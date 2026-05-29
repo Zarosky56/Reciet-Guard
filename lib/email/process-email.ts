@@ -152,6 +152,7 @@ export async function processParsedEmail(
       document: document
         ? { content: document.buffer, mimeType: document.mimeType }
         : undefined,
+      subject: email.subject,
     });
 
     if (extraction.status !== "success") {

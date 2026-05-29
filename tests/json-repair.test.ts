@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { repairJson } from "@/lib/ai/json-repair";
-import { normalizeExtractionData } from "@/lib/ai/schema";
+import {
+  applyReturnDeadlineDefault,
+  normalizeExtractionData,
+} from "@/lib/ai/schema";
 
 describe("AI JSON repair", () => {
   it("parses markdown-wrapped JSON", () => {
@@ -16,7 +19,7 @@ describe("AI JSON repair", () => {
     });
   });
 
-  it("defaults return deadline to purchase date plus 30 days", () => {
+  it("normalizes currency without auto-defaulting return deadline", () => {
     const result = normalizeExtractionData({
       store_name: "Example",
       item_name: "Shoes",
@@ -27,7 +30,31 @@ describe("AI JSON repair", () => {
       confidence: 0.9,
     });
 
-    expect(result.return_deadline).toBe("2026-05-31");
+    expect(result.return_deadline).toBeNull();
     expect(result.currency).toBe("USD");
+  });
+
+  it("auto-defaults return deadline only for product-purchase emails", () => {
+    const base = normalizeExtractionData({
+      store_name: "Example",
+      item_name: "Shoes",
+      price: 89.99,
+      currency: "USD",
+      purchase_date: "2026-05-01",
+      return_deadline: null,
+      confidence: 0.9,
+    });
+
+    const productResult = applyReturnDeadlineDefault(base, {
+      emailText: "Your Amazon order has shipped",
+      subject: "Order Confirmation",
+    });
+    expect(productResult.return_deadline).toBe("2026-05-31");
+
+    const serviceResult = applyReturnDeadlineDefault(base, {
+      emailText: "Monthly subscription invoice for SaaS",
+      subject: "Subscription Invoice",
+    });
+    expect(serviceResult.return_deadline).toBeNull();
   });
 });

@@ -43,9 +43,82 @@ export function normalizeExtractionData(input: unknown): AIExtractionData {
   return {
     ...parsed,
     purchase_date: purchaseDate,
-    return_deadline:
-      explicitReturnDeadline ??
-      (purchaseDate ? format(addDays(parseISO(purchaseDate), 30), "yyyy-MM-dd") : null),
+    return_deadline: explicitReturnDeadline,
     warranty_deadline: normalizeDate(parsed.warranty_deadline ?? null),
+  };
+}
+
+/**
+ * Apply smart defaults for return deadlines AFTER provider extraction.
+ *
+ * Behavior:
+ *  - If the provider already returned an explicit return_deadline, keep it.
+ *  - Otherwise, infer one from the email subject/body only when the message
+ *    looks like a consumer product purchase (Amazon, Flipkart, Shopify, etc).
+ *  - For everything else (service invoices, B2B, subscriptions), leave null
+ *    so the user isn't shown a fake "30-day return" reminder.
+ */
+const PURCHASE_KEYWORDS = [
+  "order",
+  "shipment",
+  "shipped",
+  "delivery",
+  "delivered",
+  "tracking",
+  "purchase",
+  "buy",
+  "amazon",
+  "flipkart",
+  "shopify",
+  "myntra",
+  "ajio",
+  "meesho",
+  "nykaa",
+  "bestbuy",
+  "walmart",
+  "target",
+];
+
+const SUBSCRIPTION_KEYWORDS = [
+  "subscription",
+  "recurring",
+  "renewal",
+  "monthly",
+  "annual",
+  "auto-pay",
+  "autopay",
+  "service charge",
+  "consultation",
+];
+
+export function looksLikeProductPurchase(
+  emailText: string,
+  subject?: string | null,
+): boolean {
+  const haystack = `${subject ?? ""} ${emailText}`.toLowerCase();
+
+  if (SUBSCRIPTION_KEYWORDS.some((keyword) => haystack.includes(keyword))) {
+    return false;
+  }
+
+  return PURCHASE_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}
+
+export function applyReturnDeadlineDefault(
+  data: AIExtractionData,
+  context: { emailText: string; subject?: string | null },
+): AIExtractionData {
+  if (data.return_deadline) return data;
+  if (!data.purchase_date) return data;
+  if (!looksLikeProductPurchase(context.emailText, context.subject)) {
+    return data;
+  }
+
+  const purchaseDate = parseISO(data.purchase_date);
+  if (!isValid(purchaseDate)) return data;
+
+  return {
+    ...data,
+    return_deadline: format(addDays(purchaseDate, 30), "yyyy-MM-dd"),
   };
 }

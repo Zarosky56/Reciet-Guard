@@ -12,7 +12,10 @@ import {
   isVertexAiEnabled,
   VertexAiUnavailableError,
 } from "@/lib/ai/providers/vertex-ai";
-import { normalizeExtractionData } from "@/lib/ai/schema";
+import {
+  applyReturnDeadlineDefault,
+  normalizeExtractionData,
+} from "@/lib/ai/schema";
 import type {
   AIExtractionData,
   AIExtractionResult,
@@ -88,6 +91,8 @@ export interface ExtractInput {
   emailText: string;
   /** Optional document (PDF/image) — when present, Document AI is tried first. */
   document?: DocumentAiInput;
+  /** Optional email subject — used to detect product purchases for smart defaults. */
+  subject?: string | null;
 }
 
 async function tryDocumentAi(
@@ -158,7 +163,14 @@ export async function extractReceipt(
   if (input.document) {
     const docResult = await tryDocumentAi(input.document, failures);
     if (docResult) {
-      return { status: "success", provider: "document_ai", data: docResult };
+      return {
+        status: "success",
+        provider: "document_ai",
+        data: applyReturnDeadlineDefault(docResult, {
+          emailText: input.emailText,
+          subject: input.subject,
+        }),
+      };
     }
   }
 
@@ -167,7 +179,10 @@ export async function extractReceipt(
     return {
       status: "success",
       provider: textResult.provider,
-      data: textResult.data,
+      data: applyReturnDeadlineDefault(textResult.data, {
+        emailText: input.emailText,
+        subject: input.subject,
+      }),
     };
   }
 
