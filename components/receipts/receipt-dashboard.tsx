@@ -20,6 +20,7 @@ import { ReceiptEmptyState } from "@/components/receipts/receipt-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { ActionLoader, Loader } from "@/components/ui/loaders";
 import { cn } from "@/lib/utils/cn";
@@ -383,6 +384,14 @@ export function ReceiptDashboard({
   }
 
   function deleteReceipt(receipt: ReceiptWithUrgency) {
+    setConfirmDelete(receipt);
+  }
+
+  function confirmDeleteReceipt() {
+    const receipt = confirmDelete;
+    if (!receipt) return;
+    setConfirmDelete(null);
+
     runPending({ type: "delete", receiptId: receipt.id }, async () => {
       const response = await fetch(`/api/receipts/${receipt.id}`, {
         method: "DELETE",
@@ -407,6 +416,9 @@ export function ReceiptDashboard({
   }).format(stats.moneyAtRisk);
 
   const [extractOpen, setExtractOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<ReceiptWithUrgency | null>(
+    null,
+  );
 
   return (
     <div className="grid gap-6 pb-24 pt-6 md:gap-8 md:pb-10 md:pt-8">
@@ -668,6 +680,39 @@ export function ReceiptDashboard({
         onSubmit={submitReceipt}
         onClose={resetForm}
       />
+
+      {/* Confirm delete */}
+      <Dialog
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete this receipt?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            {confirmDelete
+              ? `This permanently removes "${confirmDelete.store_name ?? "this receipt"}${confirmDelete.item_name ? ` — ${confirmDelete.item_name}` : ""}". This can't be undone.`
+              : ""}
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setConfirmDelete(null)}
+              disabled={isBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={confirmDeleteReceipt}
+              disabled={isBusy}
+            >
+              Delete receipt
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

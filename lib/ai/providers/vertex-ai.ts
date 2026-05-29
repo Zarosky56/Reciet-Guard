@@ -12,7 +12,7 @@ import { getGoogleAuth } from "@/lib/google-cloud/auth";
  * and is often more accurate than Document AI on unusual invoice layouts.
  */
 
-const VERTEX_MODEL = "gemini-2.0-flash-001";
+const VERTEX_MODEL = "gemini-2.0-flash";
 
 export class VertexAiUnavailableError extends Error {
   constructor(message: string) {
