@@ -12,7 +12,13 @@ import { getGoogleAuth } from "@/lib/google-cloud/auth";
  * and is often more accurate than Document AI on unusual invoice layouts.
  */
 
-const VERTEX_MODEL = "gemini-2.0-flash";
+/**
+ * Vertex AI model. We use 1.5-flash-002 which is GA in every project on every
+ * region, instead of the newer 2.0/2.5 models that may require enrollment.
+ * 1.5-flash supports multimodal (PDF/image) inputs and is plenty smart for
+ * receipt/invoice extraction.
+ */
+const VERTEX_MODEL = "gemini-1.5-flash-002";
 
 export class VertexAiUnavailableError extends Error {
   constructor(message: string) {
