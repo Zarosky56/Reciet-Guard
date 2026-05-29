@@ -9,6 +9,7 @@ import { extractWithGemini } from "@/lib/ai/providers/gemini";
 import { extractWithGroq } from "@/lib/ai/providers/groq";
 import {
   extractWithVertexAi,
+  extractWithVertexAiMultimodal,
   isVertexAiEnabled,
   VertexAiUnavailableError,
 } from "@/lib/ai/providers/vertex-ai";
@@ -106,10 +107,16 @@ async function tryDocumentAi(
   try {
     const raw = await extractWithDocumentAi(input);
     const data = normalizeExtractionData(raw);
-    if (data.confidence >= MIN_DOCUMENT_AI_CONFIDENCE) {
+    // Treat zero-price as a failed parse (common with Indian tax invoices that
+    // confuse Document AI's expense parser). Falls through to Vertex AI.
+    if (data.price !== null && data.price > 0 && data.confidence >= MIN_DOCUMENT_AI_CONFIDENCE) {
       return data;
     }
-    failures.push(`document_ai: low confidence ${data.confidence}`);
+    if (data.confidence < MIN_DOCUMENT_AI_CONFIDENCE) {
+      failures.push(`document_ai: low confidence ${data.confidence}`);
+    } else {
+      failures.push(`document_ai: parsed price as ${data.price ?? "null"}`);
+    }
     return null;
   } catch (error) {
     if (error instanceof DocumentAiUnavailableError) {
@@ -118,6 +125,38 @@ async function tryDocumentAi(
     }
     const message = error instanceof Error ? error.message : "unknown error";
     failures.push(`document_ai: ${message}`);
+    return null;
+  }
+}
+
+async function tryVertexMultimodal(
+  document: DocumentAiInput,
+  failures: string[],
+): Promise<AIExtractionData | null> {
+  if (!isVertexAiEnabled()) {
+    return null;
+  }
+
+  try {
+    const raw = await extractWithVertexAiMultimodal(document);
+    const repaired = repairJson(raw);
+    if (!repaired) {
+      failures.push("vertex_ai_multimodal: invalid JSON");
+      return null;
+    }
+    const data = normalizeExtractionData(repaired);
+    if (data.confidence >= MIN_CONFIDENCE) {
+      return data;
+    }
+    failures.push(`vertex_ai_multimodal: low confidence ${data.confidence}`);
+    return null;
+  } catch (error) {
+    if (error instanceof VertexAiUnavailableError) {
+      failures.push(`vertex_ai_multimodal: ${error.message}`);
+      return null;
+    }
+    const message = error instanceof Error ? error.message : "unknown error";
+    failures.push(`vertex_ai_multimodal: ${message}`);
     return null;
   }
 }
@@ -167,6 +206,20 @@ export async function extractReceipt(
         status: "success",
         provider: "document_ai",
         data: applyReturnDeadlineDefault(docResult, {
+          emailText: input.emailText,
+          subject: input.subject,
+        }),
+      };
+    }
+
+    // Document AI couldn't parse it well. Try Vertex AI multimodal which can
+    // read the PDF/image directly with Gemini's understanding.
+    const multimodalResult = await tryVertexMultimodal(input.document, failures);
+    if (multimodalResult) {
+      return {
+        status: "success",
+        provider: "vertex_ai",
+        data: applyReturnDeadlineDefault(multimodalResult, {
           emailText: input.emailText,
           subject: input.subject,
         }),

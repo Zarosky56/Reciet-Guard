@@ -109,23 +109,36 @@ function pickEntity(
   return undefined;
 }
 
-/** Pick the first entity whose money value parses to a non-zero amount. */
-function pickMoneyEntity(
+/** Pick the entity with the largest money amount across the listed types. */
+function pickLargestMoneyEntity(
   entities: ExpenseEntity[],
   ...types: string[]
-): ExpenseEntity | undefined {
-  for (const type of types) {
-    const candidates = entities.filter((entity) => entity.type === type);
-    for (const candidate of candidates) {
-      const amount = entityMoney(candidate).amount;
-      if (amount !== null && amount > 0) {
-        return candidate;
-      }
+): { entity: ExpenseEntity; amount: number } | null {
+  let best: { entity: ExpenseEntity; amount: number } | null = null;
+  for (const entity of entities) {
+    if (!entity.type || !types.includes(entity.type)) continue;
+    const amount = entityMoney(entity).amount;
+    if (amount === null || amount <= 0) continue;
+    if (!best || amount > best.amount) {
+      best = { entity, amount };
     }
   }
-  // Fallback: return the first found regardless of amount, so we still surface
-  // the entity if all came back zero (lets caller log it).
-  return pickEntity(entities, ...types);
+  return best;
+}
+
+/** Last-ditch: scan ALL entities for the largest non-zero money value. */
+function findLargestMoneyAnywhere(
+  entities: ExpenseEntity[],
+): { amount: number; currency: string | null } | null {
+  let best: { amount: number; currency: string | null } | null = null;
+  for (const entity of entities) {
+    const money = entityMoney(entity);
+    if (money.amount === null || money.amount <= 0) continue;
+    if (!best || money.amount > best.amount) {
+      best = { amount: money.amount, currency: money.currency };
+    }
+  }
+  return best;
 }
 
 function entityText(entity: ExpenseEntity | undefined): string | null {
@@ -278,18 +291,32 @@ export async function extractWithDocumentAi(
     "line_item_description",
     "description",
   );
-  const total = pickMoneyEntity(
-    entities,
+  // Total: try labeled "total" fields first, then fall back to the largest
+  // money value across "amount-like" fields, then finally the largest money
+  // anywhere in the doc. Indian tax invoices often label the grand total
+  // unconventionally (e.g. just "Amount") which trips Document AI's training.
+  const totalCandidates = [
     "total_amount",
-    "net_amount",
     "grand_total",
     "amount_due",
     "balance_due",
     "total_due",
     "invoice_total",
     "amount_paid",
+    "net_amount",
+  ];
+  const broaderCandidates = [
+    ...totalCandidates,
     "subtotal",
-  );
+    "amount",
+    "line_item/amount",
+  ];
+  const labeledTotal = pickLargestMoneyEntity(entities, ...totalCandidates);
+  const broadestTotal =
+    labeledTotal ?? pickLargestMoneyEntity(entities, ...broaderCandidates);
+  const totalMoney = broadestTotal
+    ? entityMoney(broadestTotal.entity)
+    : findLargestMoneyAnywhere(entities) ?? { amount: null, currency: null };
   const currencyEntity = pickEntity(entities, "currency", "currency_code");
   const purchaseDate = pickEntity(
     entities,
@@ -306,7 +333,6 @@ export async function extractWithDocumentAi(
     "warranty_expiry",
   );
 
-  const totalMoney = entityMoney(total);
   const currency =
     totalMoney.currency ??
     entityText(currencyEntity)?.toUpperCase() ??
