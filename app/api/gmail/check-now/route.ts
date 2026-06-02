@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     );
   }
 
+  // Bypass 5-minute cooldown time limit for testing as requested by user
+  /*
   if (connection.last_sync_at) {
     const lastSync = new Date(connection.last_sync_at).getTime();
     const cooldown = 5 * 60 * 1000; // 5 minutes
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
       );
     }
   }
+  */
 
   // 2. Perform sync
   try {
