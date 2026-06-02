@@ -2,96 +2,78 @@ import { NextResponse } from "next/server";
 
 import { apiError } from "@/lib/api/errors";
 import { requireApiUser } from "@/lib/auth/api";
-import { createGmailClient } from "@/lib/email/gmail-client";
-import { parseGmailMessage } from "@/lib/email/parse-gmail-message";
-import { processParsedEmail } from "@/lib/email/process-email";
+import { syncUserGmailReceipts } from "@/lib/email/user-gmail-sync";
 
-export async function POST() {
-  const { user, response } = await requireApiUser();
-  if (response) {
-    return response;
+export async function POST(request: Request) {
+  const { supabase, user, response } = await requireApiUser();
+  if (response || !user) {
+    return response || apiError("UNAUTHORIZED", "Please log in first.", 401);
   }
 
-  if (!user?.email) {
-    return apiError("USER_EMAIL_MISSING", "Your account email is missing.", 400);
-  }
+  // 1. Cooldown rate limit check (5 minutes)
+  const { data: connection, error: connError } = await supabase
+    .from("user_gmail_connections")
+    .select("last_sync_at, status, needs_reconnect")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  let gmail: ReturnType<typeof createGmailClient>;
-
-  try {
-    gmail = createGmailClient();
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Gmail API credentials are missing.";
-
+  if (connError || !connection || connection.status !== "connected" || connection.needs_reconnect) {
     return apiError(
-      "GMAIL_NOT_CONFIGURED",
-      message,
-      503,
+      "GMAIL_NOT_CONNECTED",
+      "Connect your Gmail account before running a check.",
+      428,
     );
   }
 
+  if (connection.last_sync_at) {
+    const lastSync = new Date(connection.last_sync_at).getTime();
+    const cooldown = 5 * 60 * 1000; // 5 minutes
+    if (Date.now() - lastSync < cooldown) {
+      return apiError(
+        "RATE_LIMIT_EXCEEDED",
+        "Please wait at least 5 minutes between manual inbox checks.",
+        429,
+      );
+    }
+  }
+
+  // 2. Perform sync
   try {
-    const list = await gmail.users.messages.list({
-      userId: "me",
-      q: `from:${user.email} newer_than:7d`,
-      maxResults: 25,
+    const requestUrl = new URL(request.url);
+    const syncResult = await syncUserGmailReceipts(user.id, {
+      origin: requestUrl.origin,
     });
 
-    const messages = list.data.messages ?? [];
-    const results = [];
-
-    for (const message of messages) {
-      if (!message.id) {
-        continue;
-      }
-
-      const fullMessage = await gmail.users.messages.get({
-        userId: "me",
-        id: message.id,
-        format: "full",
-      });
-
-      const parsed = parseGmailMessage(fullMessage.data);
-      const result = await processParsedEmail(parsed);
-      results.push(result);
-
-      await gmail.users.messages.modify({
-        userId: "me",
-        id: message.id,
-        requestBody: {
-          removeLabelIds: ["UNREAD"],
-        },
-      });
-    }
-
     return NextResponse.json({
-      checked: messages.length,
-      userEmail: user.email,
-      results,
+      checked: syncResult.checked,
+      imported: syncResult.imported,
+      needs_review: syncResult.needs_review,
+      skipped_duplicate: syncResult.skipped_duplicate,
+      skipped_expired: syncResult.skipped_expired,
+      failed: syncResult.failed,
       summary: {
-        success: results.filter((result) => result.status === "success").length,
-        duplicate: results.filter((result) => result.status === "duplicate")
-          .length,
-        unknown_sender: results.filter(
-          (result) => result.status === "unknown_sender",
-        ).length,
-        needs_review: results.filter(
-          (result) => result.status === "needs_review",
-        ).length,
-        failed: results.filter((result) => result.status === "failed").length,
+        success: syncResult.imported,
+        imported: syncResult.imported,
+        needs_review: syncResult.needs_review,
+        duplicate: syncResult.skipped_duplicate,
+        skipped_duplicate: syncResult.skipped_duplicate,
+        skipped_expired: syncResult.skipped_expired,
+        failed: syncResult.failed,
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Gmail check failed.";
-
+    console.error("[gmail check-now api failed]", error);
+    const message = error instanceof Error ? error.message : "Gmail sync failed.";
     return NextResponse.json(
       {
         checked: 0,
-        results: [],
+        imported: 0,
+        needs_review: 0,
+        skipped_duplicate: 0,
+        skipped_expired: 0,
+        failed: 0,
         error: {
-          code: "GMAIL_CHECK_FAILED",
+          code: "GMAIL_SYNC_FAILED",
           message,
           status: 502,
         },
