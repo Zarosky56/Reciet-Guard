@@ -169,11 +169,12 @@ export async function syncUserGmailReceipts(
     for (const msgRef of messages) {
       if (!msgRef.id) continue;
 
-      // 5a. Check if already processed
+      // 5a. Check if already processed for this user
       const { data: existingLog } = await admin
         .from("email_logs")
         .select("id")
         .eq("gmail_message_id", msgRef.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (existingLog) {
