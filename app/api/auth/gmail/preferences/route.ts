@@ -7,7 +7,7 @@ import { requireApiUser } from "@/lib/auth/api";
 const gmailPreferencesSchema = z.object({
   timeWindow: z.enum(["new", "2d", "7d", "14d"]),
   allowedSenders: z
-    .array(z.enum(["amazon.in", "amazon.com", "flipkart.com", "apple.com", "uber.com"]))
+    .array(z.enum(["amazon.in", "amazon.com", "flipkart.com", "apple.com", "uber.com", "others"]))
     .min(1),
   uncertainAction: z.enum(["add_to_review", "ask_first"]),
   notificationPref: z.enum(["every_import", "grouped_summary", "none"]),

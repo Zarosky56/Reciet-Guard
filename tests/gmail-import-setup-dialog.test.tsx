@@ -97,10 +97,11 @@ describe("GmailImportSetupDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Auto fetch Set rules first." }));
     fireEvent.click(await screen.findByRole("button", { name: "Last 14 days" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ask first" }));
-    fireEvent.click(screen.getByRole("button", { name: "Every import" }));
-    fireEvent.click(screen.getByRole("button", { name: "Return only" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save auto fetch setup" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Ask first" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Every import" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Return only" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save auto fetch setup" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenLastCalledWith(
