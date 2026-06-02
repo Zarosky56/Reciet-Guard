@@ -2,6 +2,7 @@ import { CalendarDays, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { Reveal } from "@/components/motion/motion-primitives";
+import { IntroToggle } from "@/components/profile/intro-toggle";
 import { LogoutSection } from "@/components/settings/logout-section";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +153,11 @@ export default async function ProfilePage() {
                   label="Account created"
                   value={formatDate(user.created_at)}
                 />
+                <ProfileControlRow label="Intro to app">
+                  <IntroToggle
+                    enabled={profile?.intro_to_app_enabled ?? false}
+                  />
+                </ProfileControlRow>
               </dl>
             </CardContent>
           </Card>
@@ -211,6 +217,23 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
       <dd className="break-words font-mono text-sm leading-6 text-text-primary">
         {value}
       </dd>
+    </div>
+  );
+}
+
+function ProfileControlRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
+      <dt className="text-xs uppercase tracking-wider text-text-muted">
+        {label}
+      </dt>
+      <dd>{children}</dd>
     </div>
   );
 }

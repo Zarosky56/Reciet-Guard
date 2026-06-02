@@ -3,8 +3,9 @@ import { Bell, Inbox, LockKeyhole } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { Reveal } from "@/components/motion/motion-primitives";
 import { CopyForwardingAddress } from "@/components/receipts/copy-forwarding-address";
+import { GmailConnectionSettings } from "@/components/settings/gmail-connection-settings";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { LogoutSection } from "@/components/settings/logout-section";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ensureProfile, requireUser } from "@/lib/auth/session";
@@ -78,9 +79,9 @@ export default async function SettingsPage() {
 
               <SettingRow
                 label="Inbox import"
-                description="Receipt Guardian imports mail only when you ask it to check."
+                description="Connect your own Gmail account, then choose manual checks or guided auto fetch."
               >
-                <Badge>Manual</Badge>
+                <GmailConnectionSettings />
               </SettingRow>
             </CardContent>
           </Card>
@@ -96,10 +97,10 @@ export default async function SettingsPage() {
               />
 
               <SettingRow
-                label="Return deadline reminder"
-                description="A daily check sends one email when an active return window is within 3 days."
+                label="Reminder delivery"
+                description="Choose email and app notification delivery for return and warranty reminders."
               >
-                <Badge variant="success">Active</Badge>
+                <NotificationSettings />
               </SettingRow>
             </CardContent>
           </Card>

@@ -138,7 +138,8 @@ const eslintConfig = [
   //   - 8.2  Auth shell        (auth-form.tsx)
   //
   // Phase 3 — screens:
-  //   - 8.1  Landing           (app/page.tsx)
+  //   - 8.1  Landing           (app/page.tsx,
+  //                             components/landing/landing-page.tsx)
   //   - 8.3  Dashboard hero    (receipt-dashboard.tsx)
   //   - 8.4  Receipt surfaces  (receipt-card.tsx,
   //                             receipt-empty-state.tsx,
@@ -159,6 +160,7 @@ const eslintConfig = [
       "app/layout.tsx",
       // Landing
       "app/page.tsx",
+      "components/landing/landing-page.tsx",
       // Dashboard / Profile / Settings shells and loading states
       "app/(dashboard)/dashboard/loading.tsx",
       "app/(dashboard)/profile/page.tsx",

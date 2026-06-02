@@ -140,7 +140,7 @@ export function Dialog({
               <div className="flex items-center justify-between gap-4 border-b border-border bg-surface-overlay px-5 py-4">
                 <h2
                   id={titleId}
-                  className="text-[15px] font-semibold tracking-tight text-text-primary"
+                  className="text-sm font-semibold tracking-tight text-text-primary"
                 >
                   {title}
                 </h2>

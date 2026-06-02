@@ -32,7 +32,9 @@ export async function ensureProfile(userId: string) {
 
   const { data: existing } = await supabase
     .from("profiles")
-    .select("id, forwarding_address, created_at, updated_at")
+    .select(
+      "id, forwarding_address, role, default_currency, onboarding_completed, intro_to_app_enabled, email_notifications_enabled, push_notifications_enabled, reminder_thresholds, created_at, updated_at",
+    )
     .eq("id", userId)
     .maybeSingle();
 
@@ -42,7 +44,9 @@ export async function ensureProfile(userId: string) {
         .from("profiles")
         .update({ forwarding_address: forwardingAddress })
         .eq("id", userId)
-        .select("id, forwarding_address, created_at, updated_at")
+        .select(
+          "id, forwarding_address, role, default_currency, onboarding_completed, intro_to_app_enabled, email_notifications_enabled, push_notifications_enabled, reminder_thresholds, created_at, updated_at",
+        )
         .single();
 
       return data ?? existing;
@@ -57,7 +61,9 @@ export async function ensureProfile(userId: string) {
       id: userId,
       forwarding_address: forwardingAddress,
     })
-    .select("id, forwarding_address, created_at, updated_at")
+    .select(
+      "id, forwarding_address, role, default_currency, onboarding_completed, intro_to_app_enabled, email_notifications_enabled, push_notifications_enabled, reminder_thresholds, created_at, updated_at",
+    )
     .single();
 
   return data;

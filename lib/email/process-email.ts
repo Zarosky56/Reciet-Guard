@@ -2,10 +2,17 @@ import "server-only";
 
 import { extractReceipt } from "@/lib/ai/extract-receipt";
 import { createGmailClient } from "@/lib/email/gmail-client";
+import { notifyGmailImport } from "@/lib/notifications/gmail-import";
+import { insertAttachmentRow } from "@/lib/receipts/attachments";
 import type {
   GmailAttachmentRef,
   ParsedGmailMessage,
 } from "@/lib/email/parse-gmail-message";
+import {
+  buildStoragePath,
+  isAllowedMime,
+  uploadReceiptFile,
+} from "@/lib/storage/receipt-storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface GmailProcessingResult {
@@ -166,6 +173,14 @@ export async function processParsedEmail(
         error_message: extraction.error,
       });
 
+      await notifyGmailImport(admin, {
+        userId,
+        userEmail: email.fromAddress,
+        messageId: email.gmailMessageId,
+        status: "needs_review",
+        error: extraction.error,
+      });
+
       return {
         messageId: email.gmailMessageId,
         status: "needs_review",
@@ -196,6 +211,38 @@ export async function processParsedEmail(
       throw receiptError ?? new Error("Receipt insert failed");
     }
 
+    if (
+      document &&
+      primaryAttachment &&
+      isAllowedMime(primaryAttachment.mimeType)
+    ) {
+      try {
+        const storagePath = buildStoragePath({
+          userId,
+          receiptId: receipt.id,
+          filename: primaryAttachment.filename,
+        });
+        await uploadReceiptFile(admin, {
+          storagePath,
+          body: document.buffer,
+          mimeType: primaryAttachment.mimeType,
+        });
+        await insertAttachmentRow(admin, {
+          receiptId: receipt.id,
+          userId,
+          storagePath,
+          originalFilename: primaryAttachment.filename,
+          mimeType: primaryAttachment.mimeType,
+          sizeBytes: document.buffer.byteLength,
+          kind: "receipt",
+          source: "email_attachment",
+          isPrimary: true,
+        });
+      } catch (error) {
+        console.error("[gmail attachment storage]", error);
+      }
+    }
+
     await admin.from("email_logs").insert({
       user_id: userId,
       receipt_id: receipt.id,
@@ -204,6 +251,16 @@ export async function processParsedEmail(
       subject: email.subject,
       received_at: email.receivedAt,
       processing_status: "success",
+    });
+
+    await notifyGmailImport(admin, {
+      userId,
+      userEmail: email.fromAddress,
+      receiptId: receipt.id,
+      messageId: email.gmailMessageId,
+      itemName: extraction.data.item_name,
+      storeName: extraction.data.store_name,
+      status: "success",
     });
 
     return {

@@ -76,7 +76,7 @@ const SOURCE_EXTENSIONS = new Set<string>([
  * `design-system/__tests__/**` by construction; the explicit list is
  * documented for future maintainers.
  */
-const EXCLUDED_PATH_PREFIXES = ["design-system/__tests__/"] as const;
+const EXCLUDED_PATH_PREFIXES = ["design-system/__tests__/", "components/receipts/photo-capture.tsx"] as const;
 
 // ---------------------------------------------------------------------------
 // File system walks

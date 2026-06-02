@@ -315,7 +315,7 @@ Convert the feature design into a series of prompts for a code-generation LLM th
     - Reproduce the AI_Slop_Pattern catalogue from Requirement 13 as the rejected-pattern checklist
     - _Requirements: 1.2, 1.3, 1.6, 10.8_
 
-  - [x] 12.2 Update `design-system/DESIGN.md`
+  - [x] 12.2 Update `design-system/DESIGN.md
     - Reflect every redesigned token, anti-pattern, and motion rule introduced by Requirements 1-8 and the design "Token system" section
     - Document the chosen UI sans-serif rationale and the three OpenType features applied
     - Document the single accent and the gradient ban

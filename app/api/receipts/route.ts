@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api/errors";
 import { requireApiUser } from "@/lib/auth/api";
 import { mapReceipt, mapReceipts } from "@/lib/receipts/mapper";
 import { receiptCreateSchema } from "@/lib/receipts/schema";
+import { attachReceiptFiles } from "@/lib/receipts/with-attachments";
 
 export async function GET(request: Request) {
   const { supabase, user, response } = await requireApiUser();
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
     return apiError("DATABASE_ERROR", "Could not load receipts.", 500);
   }
 
-  const receipts = mapReceipts(data);
+  const receipts = await attachReceiptFiles(supabase, mapReceipts(data));
 
   return NextResponse.json({
     receipts,

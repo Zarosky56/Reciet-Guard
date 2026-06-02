@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loaders";
 import { PageLoader } from "@/components/ui/page-loader";
 import { cn } from "@/lib/utils/cn";
+import { HeaderAddButton } from "@/components/dashboard/header-add-button";
 import { MobileBottomNav } from "@/components/dashboard/mobile-bottom-nav";
 
 type HeaderPage = "dashboard" | "settings" | "profile";
@@ -94,27 +95,35 @@ export function DashboardHeader({
             })}
           </nav>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={loggingOut}
-              data-loading={loggingOut ? "true" : undefined}
-              onClick={handleLogout}
-            >
-              {loggingOut ? (
-                <>
-                  <Loader size="sm" label="" />
-                  Signing out
-                </>
-              ) : (
-                <>
-                  <LogOut data-icon aria-hidden="true" />
-                  Log out
-                </>
-              )}
-            </Button>
+          <div className="flex items-center gap-2">
+            {/* Quick-add — the header trigger that opens the same
+                AddMenu as the floating composer FAB. Deep-links each
+                action to the dashboard via ?action=… so it works
+                from Settings, Profile, and Test Extraction too. */}
+            <HeaderAddButton />
+
+            <div className="hidden items-center gap-2 md:flex">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={loggingOut}
+                data-loading={loggingOut ? "true" : undefined}
+                onClick={handleLogout}
+              >
+                {loggingOut ? (
+                  <>
+                    <Loader size="sm" label="" />
+                    Signing out
+                  </>
+                ) : (
+                  <>
+                    <LogOut data-icon aria-hidden="true" />
+                    Log out
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </header>

@@ -27,6 +27,7 @@ export interface Receipt {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+  attachments?: AttachmentWithUrl[] | null;
 }
 
 export interface ReceiptWithUrgency extends Receipt {

@@ -4,6 +4,8 @@ import { apiError } from "@/lib/api/errors";
 import { startGmailWatch } from "@/lib/email/gmail-watch";
 import { checkDeadlineNotifications } from "@/lib/notifications/check-deadlines";
 
+export const dynamic = "force-dynamic";
+
 function isAuthorized(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {

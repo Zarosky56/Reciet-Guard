@@ -43,6 +43,126 @@ import type {
  * through silently so users never see paid-feature failures.
  */
 
+// ---------------------------------------------------------------------------
+// Billing / quota error classification (Requirements 6.3, 6.7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the error indicates a billing or quota issue that should
+ * cause the provider chain to silently fall through to the next provider.
+ *
+ * Matches:
+ *  - HTTP 402 (Payment Required)
+ *  - HTTP 403 with message matching /billing|quota/i
+ *  - Error message containing "BILLING_DISABLED"
+ *  - Error message containing "RESOURCE_EXHAUSTED"
+ */
+export function isBillingOrQuotaError(error: unknown): boolean {
+  if (error == null) return false;
+
+  // Extract status code and message from various error shapes
+  const status =
+    typeof (error as { status?: unknown }).status === "number"
+      ? (error as { status: number }).status
+      : typeof (error as { statusCode?: unknown }).statusCode === "number"
+        ? (error as { statusCode: number }).statusCode
+        : typeof (error as { code?: unknown }).code === "number"
+          ? (error as { code: number }).code
+          : null;
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof (error as { message?: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : String(error);
+
+  // HTTP 402 — always a billing error
+  if (status === 402) return true;
+
+  // HTTP 403 with billing/quota keywords
+  if (status === 403 && /billing|quota/i.test(message)) return true;
+
+  // Explicit GCP error codes in the message
+  if (/BILLING_DISABLED/i.test(message)) return true;
+  if (/RESOURCE_EXHAUSTED/i.test(message)) return true;
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Error summary sanitization (Requirements 6.3, 6.7)
+// ---------------------------------------------------------------------------
+
+/** Substrings that must never appear in the public error summary. */
+const FORBIDDEN_ERROR_SUBSTRINGS = [
+  "upgrade",
+  "billing",
+  "Document AI",
+  "Vertex",
+  "console.cloud.google.com",
+] as const;
+
+/**
+ * Sanitize the error summary string so it never leaks billing-related or
+ * provider-specific language to the end user.
+ */
+function sanitizeErrorSummary(raw: string): string {
+  let sanitized = raw;
+  for (const forbidden of FORBIDDEN_ERROR_SUBSTRINGS) {
+    // Case-insensitive replacement of each forbidden substring
+    const regex = new RegExp(forbidden.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    sanitized = sanitized.replace(regex, "provider");
+  }
+  return sanitized || "Extraction failed";
+}
+
+// ---------------------------------------------------------------------------
+// Per-provider timeout (Requirement 6.8)
+// ---------------------------------------------------------------------------
+
+/** Maximum time (ms) any single provider attempt is allowed before abort. */
+export const PROVIDER_TIMEOUT_MS = 30_000;
+
+/**
+ * Wraps a provider call with a per-provider 30 000 ms abort ceiling.
+ * If the provider exceeds the timeout, the returned promise rejects with an
+ * `AbortError`-like error so the caller can record `${provider}: timeout` and
+ * continue the chain.
+ */
+function withProviderTimeout<T>(
+  providerName: string,
+  fn: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+
+  return fn(controller.signal).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
+/**
+ * Returns true when the error is an abort/timeout error (from our per-provider
+ * timeout or from the AbortController being aborted).
+ */
+function isTimeoutError(error: unknown): boolean {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") return true;
+    if (error.message.includes("aborted") || error.message.includes("abort")) return true;
+  }
+  // DOMException with name "AbortError" (Node 18+ / browser)
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name: string }).name === "AbortError"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 const fallbackData: AIExtractionData = {
   store_name: null,
   item_name: null,
@@ -62,13 +182,18 @@ interface TextProvider {
   isUnavailable?: (error: unknown) => boolean;
 }
 
-const MIN_CONFIDENCE = 0.7;
 /**
- * Document AI's confidence is an AVERAGE across all extracted entities,
- * so 0.6 is actually a decent invoice parse. Use a lower threshold here
- * since its structured output is far more accurate than text-LLM guesses.
+ * Unified confidence threshold for all providers (Requirements 6.4 / 6.5 / 6.8).
+ * Any result with confidence < 0.6 on a 0.0–1.0 scale falls through to the
+ * next provider or returns needs_review.
  */
-const MIN_DOCUMENT_AI_CONFIDENCE = 0.5;
+const MIN_CONFIDENCE = 0.6;
+/**
+ * Document AI uses the same 0.6 threshold. Its confidence is an AVERAGE across
+ * all extracted entities, so 0.6 is still a decent invoice parse while aligning
+ * with the spec's single threshold rule.
+ */
+const MIN_DOCUMENT_AI_CONFIDENCE = 0.6;
 
 const textProviderChain: TextProvider[] = [
   {
@@ -105,7 +230,9 @@ async function tryDocumentAi(
   }
 
   try {
-    const raw = await extractWithDocumentAi(input);
+    const raw = await withProviderTimeout("document_ai", async () => {
+      return extractWithDocumentAi(input);
+    });
     const data = normalizeExtractionData(raw);
     // Treat zero-price as a failed parse (common with Indian tax invoices that
     // confuse Document AI's expense parser). Falls through to Vertex AI.
@@ -119,8 +246,22 @@ async function tryDocumentAi(
     }
     return null;
   } catch (error) {
+    // Timeout: record and fall through to next provider
+    if (isTimeoutError(error)) {
+      console.warn("[extract-receipt] Document AI timed out after 30s, falling through");
+      failures.push("document_ai: timeout");
+      return null;
+    }
+    // Billing/quota errors: log server-side and fall through silently
+    if (isBillingOrQuotaError(error)) {
+      console.warn("[extract-receipt] billing/quota error from Document AI, falling through:", error instanceof Error ? error.message : error);
+      failures.push("document_ai: unavailable");
+      return null;
+    }
     if (error instanceof DocumentAiUnavailableError) {
-      failures.push(`document_ai: ${error.message}`);
+      // DocumentAiUnavailableError already wraps billing-like errors from the provider
+      console.warn("[extract-receipt] Document AI unavailable, falling through:", error.message);
+      failures.push("document_ai: unavailable");
       return null;
     }
     const message = error instanceof Error ? error.message : "unknown error";
@@ -138,7 +279,9 @@ async function tryVertexMultimodal(
   }
 
   try {
-    const raw = await extractWithVertexAiMultimodal(document);
+    const raw = await withProviderTimeout("vertex_ai_multimodal", async () => {
+      return extractWithVertexAiMultimodal(document);
+    });
     const repaired = repairJson(raw);
     if (!repaired) {
       failures.push("vertex_ai_multimodal: invalid JSON");
@@ -151,8 +294,22 @@ async function tryVertexMultimodal(
     failures.push(`vertex_ai_multimodal: low confidence ${data.confidence}`);
     return null;
   } catch (error) {
+    // Timeout: record and fall through to next provider
+    if (isTimeoutError(error)) {
+      console.warn("[extract-receipt] Vertex AI multimodal timed out after 30s, falling through");
+      failures.push("vertex_ai_multimodal: timeout");
+      return null;
+    }
+    // Billing/quota errors: log server-side and fall through silently
+    if (isBillingOrQuotaError(error)) {
+      console.warn("[extract-receipt] billing/quota error from Vertex AI multimodal, falling through:", error instanceof Error ? error.message : error);
+      failures.push("vertex_ai_multimodal: unavailable");
+      return null;
+    }
     if (error instanceof VertexAiUnavailableError) {
-      failures.push(`vertex_ai_multimodal: ${error.message}`);
+      // VertexAiUnavailableError already wraps billing-like errors from the provider
+      console.warn("[extract-receipt] Vertex AI multimodal unavailable, falling through:", error.message);
+      failures.push("vertex_ai_multimodal: unavailable");
       return null;
     }
     const message = error instanceof Error ? error.message : "unknown error";
@@ -169,7 +326,9 @@ async function tryTextProviders(
     if (provider.enabled && !provider.enabled()) continue;
 
     try {
-      const raw = await provider.extract(emailText);
+      const raw = await withProviderTimeout(provider.name, async () => {
+        return provider.extract(emailText);
+      });
       const repaired = repairJson(raw);
       if (!repaired) {
         failures.push(`${provider.name}: invalid JSON`);
@@ -183,11 +342,24 @@ async function tryTextProviders(
 
       failures.push(`${provider.name}: low confidence ${data.confidence}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "unknown error";
-      if (provider.isUnavailable?.(error)) {
-        failures.push(`${provider.name}: ${message}`);
+      // Timeout: record and fall through to next provider
+      if (isTimeoutError(error)) {
+        console.warn(`[extract-receipt] ${provider.name} timed out after 30s, falling through`);
+        failures.push(`${provider.name}: timeout`);
         continue;
       }
+      // Billing/quota errors: log server-side and fall through silently
+      if (isBillingOrQuotaError(error)) {
+        console.warn(`[extract-receipt] billing/quota error from ${provider.name}, falling through:`, error instanceof Error ? error.message : error);
+        failures.push(`${provider.name}: unavailable`);
+        continue;
+      }
+      if (provider.isUnavailable?.(error)) {
+        console.warn(`[extract-receipt] ${provider.name} unavailable, falling through:`, error instanceof Error ? (error as Error).message : error);
+        failures.push(`${provider.name}: unavailable`);
+        continue;
+      }
+      const message = error instanceof Error ? error.message : "unknown error";
       failures.push(`${provider.name}: ${message}`);
     }
   }
@@ -246,7 +418,7 @@ export async function extractReceipt(
     status: "needs_review",
     provider: null,
     data: fallbackData,
-    error: failures.join("; ") || "Extraction failed",
+    error: sanitizeErrorSummary(failures.join("; ") || "Extraction failed"),
   };
 }
 

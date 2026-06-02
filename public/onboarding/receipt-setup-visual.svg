@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-label="Receipt setup preview">
+  <rect width="480" height="360" fill="#101217"/>
+  <circle cx="74" cy="72" r="46" fill="#1b1f29"/>
+  <circle cx="408" cy="276" r="70" fill="#181b23"/>
+  <rect x="90" y="44" width="300" height="268" rx="20" fill="#171a21" stroke="#2d313b" stroke-width="2"/>
+  <path d="M132 72h168c9 0 16 7 16 16v208l-22-13-22 13-22-13-22 13-22-13-22 13-22-13-22 13V88c0-9 7-16 16-16z" fill="#f2eadc"/>
+  <path d="M132 72h168c9 0 16 7 16 16v32H132z" fill="#eab445"/>
+  <text x="158" y="104" fill="#171a21" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">Receipt</text>
+  <rect x="154" y="146" width="138" height="10" rx="5" fill="#2f3440"/>
+  <rect x="154" y="173" width="86" height="8" rx="4" fill="#5a6070"/>
+  <rect x="154" y="196" width="118" height="8" rx="4" fill="#5a6070"/>
+  <rect x="154" y="219" width="72" height="8" rx="4" fill="#5a6070"/>
+  <rect x="154" y="252" width="124" height="34" rx="10" fill="#171a21"/>
+  <text x="174" y="274" fill="#eab445" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">20d reminder</text>
+  <rect x="58" y="166" width="120" height="76" rx="18" fill="#20242e" stroke="#343946" stroke-width="2"/>
+  <circle cx="88" cy="204" r="17" fill="#eab445"/>
+  <path d="M80 203h16M88 195v16" stroke="#171a21" stroke-width="4" stroke-linecap="round"/>
+  <text x="112" y="198" fill="#f2eadc" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">Scan</text>
+  <text x="112" y="218" fill="#9aa1b2" font-family="Inter,Arial,sans-serif" font-size="12">or paste</text>
+  <rect x="306" y="142" width="116" height="84" rx="18" fill="#20242e" stroke="#343946" stroke-width="2"/>
+  <path d="M340 171h48a11 11 0 0 1 11 11v16a11 11 0 0 1-11 11h-48a11 11 0 0 1-11-11v-16a11 11 0 0 1 11-11z" fill="#171a21"/>
+  <path d="M329 182l34 24 36-25" fill="none" stroke="#eab445" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="326" y="250" fill="#f2eadc" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">Gmail ready</text>
+  <path d="M88 252c30 36 78 54 142 54 61 0 112-20 153-60" fill="none" stroke="#eab445" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 14"/>
+</svg>
